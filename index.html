@@ -1,0 +1,2163 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Juego para aprender las tablas de multiplicar explorando una isla y atrapando animales.">
+<meta name="theme-color" content="#2c9fb3">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Isla de las Tablas">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E%F0%9F%8F%9D%EF%B8%8F%3C%2Ftext%3E%3C%2Fsvg%3E">
+<style>
+/* Base: lo que antes ponía el visor de Claude, más ajustes táctiles para móviles y tablets */
+*, *::before, *::after { box-sizing: border-box; }
+:root { color-scheme: light; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+body { -webkit-user-select: none; user-select: none; overscroll-behavior-y: none; }
+</style>
+<title>Isla de las Tablas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap">
+<style>
+/* Layout: una columna tipo consola portátil. Mapa de la isla arriba, mandos debajo, bocadillo de Nutri al pie. Mundo diurno fijo (un solo tema a propósito). */
+:root {
+  --sky: #bfe8f2;
+  --sea: #2c9fb3;
+  --sea-deep: #1d7385;
+  --grass: #86c96f;
+  --grass-deep: #3d8a47;
+  --sand: #f5e6bf;
+  --paper: #fffaee;
+  --paper-edge: #eadcb5;
+  --chip: #f4ecd4;
+  --ink: #413b2c;
+  --ink-soft: #7a715b;
+  --leaf: #f4b73a;
+  --leaf-deep: #c98a12;
+  --wrong: #e0735c;
+  --wrong-deep: #b24f3a;
+  --right: #4aa55a;
+  --display: "Fredoka", "Trebuchet MS", "Segoe UI", sans-serif;
+  --body: "Nunito", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body {
+  background: linear-gradient(180deg, var(--sky) 0%, #d8f1f4 40%, var(--sand) 100%) fixed, var(--sky);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 17px;
+  padding-inline: 16px;
+  padding-block: 10px 28px;
+}
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; }
+
+.titlebar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.titlebar h1 {
+  margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(24px, 6.5vw, 32px);
+  color: var(--paper); text-shadow: 0 3px 0 var(--sea-deep); letter-spacing: .3px;
+}
+.sound { font-size: 13px; font-weight: 800; color: var(--ink-soft); background: rgba(255,250,238,.8); padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+
+/* Bocadillo de diálogo */
+.talk { position: relative; background: var(--paper); border-radius: 26px; padding: 24px 20px 16px; box-shadow: 0 4px 0 var(--paper-edge); margin-top: 8px; }
+.talk .who { position: absolute; top: -14px; left: 22px; background: var(--leaf); font-family: var(--display); font-weight: 600; padding: 3px 14px; border-radius: 999px; transform: rotate(-3deg); box-shadow: 0 2px 0 var(--leaf-deep); }
+.talk .face { position: absolute; top: -22px; right: 18px; width: 50px; height: 50px; border-radius: 50%; background: var(--grass); display: grid; place-items: center; font-size: 28px; box-shadow: 0 3px 0 var(--grass-deep); }
+.talk p { margin: 0; font-weight: 700; line-height: 1.45; min-height: 2.9em; }
+
+.card { background: var(--paper); border-radius: 24px; padding: 18px; box-shadow: 0 4px 0 var(--paper-edge); display: flex; flex-direction: column; gap: 14px; }
+.label { font-family: var(--display); font-weight: 600; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin: 0; }
+.center { text-align: center; }
+.lead { margin: 0; font-weight: 700; line-height: 1.45; }
+
+.big { font-family: var(--display); font-weight: 700; font-size: 22px; padding: 13px 18px; border-radius: 999px; background: var(--leaf); color: var(--ink); box-shadow: 0 5px 0 var(--leaf-deep); transition: transform .08s; }
+.big:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--leaf-deep); }
+.big.alt { background: var(--sea); color: #fff; box-shadow: 0 5px 0 var(--sea-deep); font-size: 18px; }
+.big.alt:active { box-shadow: 0 2px 0 var(--sea-deep); }
+.big.red { background: var(--wrong); color: #fff; box-shadow: 0 5px 0 var(--wrong-deep); }
+.big.red:active { box-shadow: 0 2px 0 var(--wrong-deep); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.exit { font-weight: 800; font-size: 14px; color: var(--ink-soft); padding: 6px 12px; border-radius: 10px; background: #f1e8cc; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.topbar .count { font-family: var(--display); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Campo */
+.field { padding: 10px; gap: 10px; }
+.mapwrap { position: relative; border-radius: 16px; overflow: hidden; background: var(--grass); touch-action: none; }
+.mapwrap canvas { display: block; width: 100%; }
+.zone { position: absolute; left: 10px; top: 10px; background: rgba(255,250,238,.92); font-family: var(--display); font-weight: 600; font-size: 14px; padding: 3px 12px; border-radius: 999px; box-shadow: 0 2px 0 var(--paper-edge); }
+.flash { position: absolute; inset: 0; background: #fff; animation: flash .7s steps(2) forwards; }
+@keyframes flash { 0%,30%,60% { opacity: 1; } 15%,45%,75% { opacity: 0; } 100% { opacity: .9; } }
+
+.controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.dpad { display: grid; grid-template-columns: repeat(3, 58px); grid-template-rows: repeat(3, 52px); gap: 4px; user-select: none; -webkit-user-select: none; touch-action: none; }
+.dpad button { background: var(--chip); border-radius: 14px; box-shadow: 0 4px 0 var(--paper-edge); font-size: 22px; color: var(--ink-soft); touch-action: none; }
+.dpad button.on { transform: translateY(3px); box-shadow: 0 1px 0 var(--paper-edge); background: #e9dfbf; }
+.dpad .u { grid-area: 1 / 2; } .dpad .l { grid-area: 2 / 1; } .dpad .r { grid-area: 2 / 3; } .dpad .d { grid-area: 3 / 2; }
+.dpad .mid { grid-area: 2 / 2; border-radius: 50%; background: #efe6cc; margin: 10px; }
+.hud { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; flex: 1; min-width: 200px; }
+.hud .big { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.hud .big { font-size: 17px; padding: 10px 14px; }
+.hud .big small { font-family: var(--body); font-size: 13px; font-weight: 800; opacity: .85; }
+
+/* Presentación del bicho */
+.intro-emo, .res-emo { font-size: 96px; line-height: 1.1; animation: bob 1.6s ease-in-out infinite; }
+.intro h2, .result h2 { font-family: var(--display); font-weight: 700; font-size: 26px; margin: 0; text-wrap: balance; }
+.note { margin: 0; font-weight: 700; color: var(--ink-soft); font-style: italic; }
+.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: left; }
+.fact { background: var(--chip); border-radius: 14px; padding: 8px 12px; }
+.fact span { display: block; font-size: 12px; font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .06em; }
+.fact b { font-family: var(--display); font-weight: 600; font-size: 18px; font-variant-numeric: tabular-nums; }
+.stars { color: var(--leaf-deep); letter-spacing: 2px; }
+@keyframes bob { 50% { transform: translateY(-8px) rotate(-4deg); } }
+
+/* Duelo */
+.foe-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.foe-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.foe-info b { font-family: var(--display); font-weight: 700; font-size: 22px; }
+.hp { display: flex; gap: 4px; flex-wrap: wrap; }
+.hp i { flex: 1; min-width: 12px; max-width: 34px; height: 12px; border-radius: 999px; background: var(--grass); box-shadow: 0 2px 0 var(--grass-deep); }
+.hp i.gone { background: #e6dcbc; box-shadow: none; }
+.hp-text { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+.foe { font-size: 78px; line-height: 1; animation: bob 1.6s ease-in-out infinite; }
+.foe.hit { animation: hit .4s; }
+@keyframes hit { 0% { filter: brightness(3); transform: translateX(0); } 30% { transform: translateX(-10px) rotate(-8deg); } 60% { transform: translateX(10px) rotate(8deg); } 100% { filter: none; } }
+.battle.hurt { animation: shake .35s; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+
+.clockbox { display: flex; align-items: center; gap: 10px; }
+.lives { display: flex; gap: 2px; font-size: 20px; line-height: 1; }
+.lives span.lost { filter: grayscale(1); opacity: .3; }
+.timer { flex: 1; min-width: 0; height: 16px; border-radius: 999px; background: #eee3c4; overflow: hidden; }
+.timer-fill { height: 100%; width: 100%; background: var(--grass); border-radius: 999px; transform-origin: left; }
+.timer-fill.hurry { background: var(--leaf); }
+.timer-fill.panic { background: var(--wrong); }
+.secs { font-family: var(--display); font-weight: 600; font-size: 15px; font-variant-numeric: tabular-nums; min-width: 4.2em; text-align: right; }
+
+.q { text-align: center; font-family: var(--display); font-weight: 700; font-size: clamp(48px, 15vw, 70px); line-height: 1; margin: 2px 0 0; font-variant-numeric: tabular-nums; }
+.ans { margin: 0 auto; min-width: 150px; text-align: center; font-family: var(--display); font-weight: 700; font-size: 42px; padding: 4px 18px; border-radius: 18px; background: #fff; border: 3px dashed var(--paper-edge); min-height: 66px; font-variant-numeric: tabular-nums; transition: background .2s, border-color .2s; }
+.ans.ok { background: #e3f4dd; border: 3px solid var(--right); }
+.ans.bad { background: #fbe4dd; border: 3px solid var(--wrong); animation: shake .35s; }
+.pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.key { font-family: var(--display); font-weight: 600; font-size: 28px; padding: 11px 0; border-radius: 16px; background: var(--chip); box-shadow: 0 4px 0 var(--paper-edge); }
+.key:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--paper-edge); }
+.key.del { font-size: 18px; color: var(--ink-soft); }
+.key.go { background: var(--grass); color: #fff; box-shadow: 0 4px 0 var(--grass-deep); font-size: 22px; }
+.flee { align-self: center; font-weight: 800; font-size: 14px; color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
+
+/* Repaso */
+.review { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.review li { background: #fdf1e4; border-radius: 14px; padding: 10px 12px; font-weight: 700; line-height: 1.4; }
+.review li b { font-family: var(--display); font-size: 19px; display: block; font-variant-numeric: tabular-nums; }
+
+/* Entrenar */
+.chips { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.chip { font-family: var(--display); font-weight: 600; font-size: 20px; padding: 10px 0; border-radius: 14px; background: #efe6cc; color: var(--ink-soft); box-shadow: 0 3px 0 var(--paper-edge); }
+.chip[aria-pressed="true"] { background: var(--grass); color: #fff; box-shadow: 0 3px 0 var(--grass-deep); }
+.quick { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.link { font-weight: 800; font-size: 14px; color: var(--sea-deep); text-decoration: underline; text-underline-offset: 3px; padding: 2px 0; }
+.explain { background: #fdf1e4; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.explain h3 { margin: 0; font-family: var(--display); font-size: 26px; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.dots { display: grid; gap: 4px; justify-content: center; }
+.dots i { width: 14px; height: 14px; border-radius: 50%; background: var(--sea); display: block; }
+.dots i.five { background: var(--sea-deep); }
+.dots-cap { text-align: center; margin: 0; font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+
+/* Jardín */
+.garden { display: grid; grid-template-columns: 26px repeat(10, 1fr); gap: 3px; }
+.garden .h { font-family: var(--display); font-weight: 600; font-size: 13px; color: var(--ink-soft); display: grid; place-items: center; }
+.plot { aspect-ratio: 1; max-width: 100%; border-radius: 8px; background: #d9c08c; display: grid; place-items: center; font-size: clamp(13px, 4vw, 20px); padding: 0; }
+.plot.weak { background: #f3c9bd; }
+.weak-box { display: flex; flex-direction: column; gap: 10px; border-top: 2px dashed var(--paper-edge); padding-top: 14px; }
+.weak-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.weak-list span { background: #fbe4dd; border-radius: 999px; padding: 4px 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.weak-list p { margin: 0; font-weight: 700; color: var(--ink-soft); }
+.plot.l1 { background: #cfe3b0; } .plot.l2 { background: #b6dd98; } .plot.l3 { background: #9ed27f; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+.gcap { margin: 0; min-height: 1.4em; font-weight: 800; text-align: center; }
+
+/* Museo */
+.museum { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.slot { background: var(--chip); border-radius: 16px; padding: 10px 4px 8px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.slot .e { font-size: 38px; line-height: 1.2; }
+.slot.no .e { filter: grayscale(1) brightness(.2); opacity: .25; }
+.slot.seen .e { filter: grayscale(1); opacity: .55; }
+.slot small { font-size: 12px; font-weight: 800; color: var(--ink-soft); line-height: 1.25; }
+.slot .stars { font-size: 11px; letter-spacing: 1px; }
+/* Vecinos, regalos y objetos */
+.retos { display: flex; flex-direction: column; gap: 10px; text-align: left; }
+.reto { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 12px; background: var(--chip); border-radius: 18px; padding: 12px 14px; box-shadow: 0 4px 0 var(--paper-edge); }
+.reto:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--paper-edge); }
+.reto .lv { grid-row: span 3; font-family: var(--display); font-weight: 700; font-size: 18px; background: var(--leaf); border-radius: 12px; padding: 8px 10px; text-align: center; min-width: 88px; box-shadow: 0 3px 0 var(--leaf-deep); }
+.reto .lv small { display: block; font-size: 12px; letter-spacing: 1px; }
+.reto.l3 .lv, .reto.l4 .lv { background: var(--wrong); color: #fff; box-shadow: 0 3px 0 var(--wrong-deep); }
+.reto b { font-family: var(--display); font-weight: 600; font-size: 17px; }
+.reto span { font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+.reto .prize { font-size: 20px; letter-spacing: 2px; }
+.mode { display: flex; align-items: center; gap: 12px; text-align: left; background: #e6f4f6; border: 2px solid var(--sea); border-radius: 16px; padding: 10px 14px; }
+.mode .ico { font-size: 30px; line-height: 1; }
+.mode b { font-family: var(--display); font-weight: 600; font-size: 17px; display: block; }
+.mode span { font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+.mode-tag { display: inline-block; margin-top: 2px; font-size: 13px; font-weight: 800; color: var(--sea-deep); }
+/* Tienda */
+.coins { font-family: var(--display); font-weight: 700; font-size: 28px; text-align: center; font-variant-numeric: tabular-nums; }
+.shop-list { display: flex; flex-direction: column; gap: 8px; }
+.buy { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; background: var(--chip); border-radius: 16px; padding: 10px 12px; }
+.buy .e { font-size: 32px; }
+.buy b { font-family: var(--display); font-weight: 600; font-size: 17px; display: block; }
+.buy span { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.buy button { font-weight: 800; font-size: 15px; padding: 8px 14px; border-radius: 999px; background: var(--leaf); box-shadow: 0 3px 0 var(--leaf-deep); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.buy button:disabled { background: #e6dcbc; box-shadow: none; color: var(--ink-soft); cursor: default; }
+.buy button.worn { background: var(--grass); color: #fff; box-shadow: 0 3px 0 var(--grass-deep); }
+.slot.armed { outline: 3px solid var(--wrong); }
+/* Título, monedas, fichas, mascota y premios */
+.title-wrap { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.chips-top { display: flex; flex-wrap: wrap; gap: 6px; }
+.title-chip, .coin-chip { font-size: 13px; font-weight: 800; background: rgba(255,250,238,.85); color: var(--ink); padding: 3px 10px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+.title-chip { background: var(--leaf); }
+.ficha { display: flex; flex-direction: column; gap: 8px; background: var(--chip); border-radius: 18px; padding: 14px; }
+.ficha-top { display: flex; align-items: center; gap: 12px; }
+.ficha-emo { font-size: 56px; line-height: 1; }
+.ficha-top b { font-family: var(--display); font-weight: 700; font-size: 22px; display: block; }
+.ficha-sub { font-size: 13px; font-weight: 800; color: var(--ink-soft); }
+.ficha p { margin: 0; font-weight: 700; line-height: 1.4; }
+.ficha .ficha-voz { font-family: var(--display); font-size: 22px; color: var(--sea-deep); }
+.ficha .ficha-perk { background: #e3f4dd; border-radius: 12px; padding: 8px 10px; }
+.slot.pet { outline: 3px solid var(--grass); }
+.pet-tag { font-size: 22px; line-height: 1; }
+.opt.gone { opacity: .2; }
+.rewards { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
+.rewards li { background: #fff4d6; border-radius: 12px; padding: 8px 12px; font-weight: 800; }
+.mode .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--chip); border-radius: 16px; padding: 5px; }
+.mode .seg button { border-radius: 12px; padding: 8px 6px; font-weight: 800; font-size: 15px; color: var(--ink-soft); line-height: 1.2; }
+.mode .seg button small { display: block; font-size: 12px; font-weight: 700; }
+.mode .seg button[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 2px 0 var(--paper-edge); }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.opt { font-family: var(--display); font-weight: 700; font-size: 34px; padding: 14px 0; border-radius: 18px; background: var(--chip); box-shadow: 0 4px 0 var(--paper-edge); font-variant-numeric: tabular-nums; }
+.opt:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--paper-edge); }
+.opt.right { background: #cdebc4; box-shadow: 0 4px 0 var(--right); }
+.opt.wrong { background: #f6cfc4; box-shadow: 0 4px 0 var(--wrong); }
+.opt:disabled { cursor: default; }
+.use-items { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.use-items .label { width: 100%; }
+.use { font-weight: 800; font-size: 14px; padding: 8px 12px; border-radius: 999px; background: var(--chip); box-shadow: 0 3px 0 var(--paper-edge); }
+.use[aria-pressed="true"] { background: var(--grass); color: #fff; box-shadow: 0 3px 0 var(--grass-deep); }
+.gift-new { display: inline-block; background: var(--leaf); border-radius: 999px; padding: 2px 10px; font-size: 13px; font-weight: 800; margin-left: 6px; vertical-align: middle; }
+.slot .cnt { font-size: 12px; font-weight: 800; color: var(--sea-deep); }
+.q.long { font-size: clamp(36px, 11vw, 56px); }
+.mus-head { grid-column: 1 / -1; margin: 6px 0 -2px; font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.mus-head:first-child { margin-top: 0; }
+.mus-detail { margin: 0; min-height: 2.8em; font-weight: 700; line-height: 1.4; text-align: center; }
+
+/* Móviles: cruceta más pequeña al lado de los botones, en una sola fila */
+@media (max-width: 480px) {
+  .field .controls { flex-wrap: nowrap; gap: 10px; }
+  .dpad { grid-template-columns: repeat(3, 48px); grid-template-rows: repeat(3, 46px); gap: 3px; }
+  .dpad button { font-size: 18px; }
+  .hud { grid-template-columns: 1fr; min-width: 0; gap: 6px; }
+  .hud .big { font-size: 15px; padding: 6px 10px; }
+  .hud .big small { font-size: 12px; }
+}
+/* Pantallas grandes: mapa grande a la izquierda, Nutri en una columna lateral y todo lo demás ampliado */
+@media (min-width: 1100px) {
+  .wrap { max-width: 1500px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; column-gap: 24px; row-gap: 16px; align-items: start; }
+  .titlebar { grid-column: 1 / -1; zoom: 1.3; }
+  .wrap > main { grid-column: 1; grid-row: 2; }
+  .wrap > main:not(.field) { zoom: 1.35; width: 100%; max-width: 640px; justify-self: center; }
+  .talk { grid-column: 2; grid-row: 2; position: sticky; top: 24px; zoom: 1.2; margin-top: 22px; }
+  .field { padding: 14px; gap: 14px; }
+  .field .controls { zoom: 1.3; justify-content: center; gap: 40px; flex-wrap: nowrap; }
+  .field .hud { flex: 0 1 360px; }
+}
+@media (min-width: 1700px) {
+  .wrap { max-width: 2000px; grid-template-columns: minmax(0, 1fr) 400px; }
+  .titlebar { zoom: 1.6; }
+  .wrap > main:not(.field) { zoom: 1.65; }
+  .talk { zoom: 1.45; }
+  .field .controls { zoom: 1.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="titlebar">
+    <div class="title-wrap">
+      <h1>Isla de las Tablas</h1>
+      <div class="chips-top"><span class="coin-chip" id="coinChip">🪙 0</span><span class="title-chip" id="titleChip" hidden></span></div>
+    </div>
+    <button class="sound" id="sound">Sonido: sí</button>
+  </div>
+
+  <!-- CAMPO -->
+  <main id="field" class="card field">
+    <div class="mapwrap" id="mapwrap">
+      <canvas id="map" aria-label="Mapa de la isla"></canvas>
+      <div class="zone" id="zoneTag">Pradera Florida</div>
+      <div class="flash" id="flash" hidden></div>
+    </div>
+    <div class="controls">
+      <div class="dpad" id="dpad" aria-label="Mover">
+        <button class="u" data-dir="up" aria-label="Arriba">▲</button>
+        <button class="l" data-dir="left" aria-label="Izquierda">◀</button>
+        <span class="mid"></span>
+        <button class="r" data-dir="right" aria-label="Derecha">▶</button>
+        <button class="d" data-dir="down" aria-label="Abajo">▼</button>
+      </div>
+      <div class="hud">
+        <button class="big alt" id="toMuseum">Museo <small id="hudMuseum">0/48</small></button>
+        <button class="big alt" id="toGarden">Jardín <small id="hudGarden">0/100</small></button>
+        <button class="big alt" id="toCasa">Casa <small id="hudCasa">0 regalos</small></button>
+        <button class="big" id="toTrain">Entrenar</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- ENCUENTRO -->
+  <main id="intro" class="card center intro" hidden>
+    <div class="intro-emo" id="inEmo">🐙</div>
+    <h2 id="inTitle">¡Te has encontrado un pulpo!</h2>
+    <p class="note" id="inNote"></p>
+    <div class="facts">
+      <div class="fact"><span>Rareza</span><b id="inRare"></b></div>
+      <div class="fact"><span>Tablas</span><b id="inTables"></b></div>
+      <div class="fact"><span>Tiempo</span><b id="inTime"></b></div>
+      <div class="fact"><span>Para atraparlo</span><b id="inHits"></b></div>
+    </div>
+    <div class="mode" id="inMode"></div>
+    <p class="note" id="inPet"></p>
+    <div class="use-items" id="inItems" hidden></div>
+    <button class="big red" id="inFight">¡Al duelo!</button>
+    <button class="flee" id="inFlee">Huir</button>
+  </main>
+
+  <!-- DUELO -->
+  <main id="battle" class="card battle" hidden>
+    <div class="foe-row">
+      <div class="foe-info">
+        <b id="foeName">Pulpo</b>
+        <span class="stars" id="foeStars"></span>
+        <div class="hp" id="hp"></div>
+        <span class="hp-text" id="hpText"></span>
+      </div>
+      <div class="foe" id="foeEmo">🐙</div>
+    </div>
+    <div class="clockbox">
+      <span class="pet-tag" id="petTag" hidden></span>
+      <div class="lives" id="lives"></div>
+      <div class="timer" aria-hidden="true"><div class="timer-fill" id="timerFill"></div></div>
+      <span class="secs" id="secs">10,0 s</span>
+    </div>
+    <p class="q" id="bQ">7 × 8</p>
+    <div class="ans" id="bAns" aria-live="polite"></div>
+    <div class="pad" id="bPad"></div>
+    <div class="choices" id="bChoices" hidden></div>
+    <button class="flee" id="bFlee">Huir del duelo</button>
+  </main>
+
+  <!-- RESULTADO -->
+  <main id="result" class="card center result" hidden>
+    <div class="res-emo" id="resEmo">🐙</div>
+    <h2 id="resTitle"></h2>
+    <p class="lead" id="resText"></p>
+    <div id="resReviewBox">
+      <p class="label" style="margin-bottom:8px">Para repasar</p>
+      <ul class="review" id="resReview"></ul>
+    </div>
+    <button class="big" id="resOk">Seguir explorando</button>
+  </main>
+
+  <!-- VECINO -->
+  <main id="npc" class="card center intro" hidden>
+    <div class="intro-emo" id="npcEmo">🐹</div>
+    <h2 id="npcName">Lola</h2>
+    <p class="lead" id="npcHi"></p>
+    <div class="mode" id="npcQuest"></div>
+    <p class="note">El tipo de prueba de cada reto se sortea: escribir el número, elegir entre 4 o la tabla seguida.</p>
+    <div class="retos" id="npcRetos"></div>
+    <button class="flee" id="npcBye">Adiós</button>
+  </main>
+
+  <!-- CASA -->
+  <main id="casa" class="card" hidden>
+    <div class="topbar"><button class="exit" data-field>Volver</button><span class="count" id="casaCount">Mi casa</span><span></span></div>
+    <p class="mus-detail" id="casaDetail">Toca un objeto para ver qué es.</p>
+    <div class="museum" id="casaGrid"></div>
+  </main>
+
+  <!-- TIENDA -->
+  <main id="shop" class="card" hidden>
+    <div class="topbar"><button class="exit" data-field>Volver</button><span class="count">Tienda de Rufo 🦘</span><span></span></div>
+    <div class="coins" id="coins">🪙 0 monedas</div>
+    <p class="lead" id="shopMsg"></p>
+    <p class="label">Comprar</p>
+    <div class="shop-list" id="buyList"></div>
+    <p class="label">Vender regalos</p>
+    <div class="museum" id="sellGrid"></div>
+  </main>
+
+  <!-- ENTRENAR -->
+  <main id="train" class="card" hidden>
+    <div class="topbar"><button class="exit" data-field>Volver</button><span class="count">Entrenar con Nutri</span><span></span></div>
+    <p class="lead">Aquí no hay prisa. Si fallas, Nutri te enseña el truco con bolitas.</p>
+    <p class="label">¿Qué tablas practicamos?</p>
+    <div class="chips" id="chips"></div>
+    <div class="quick">
+      <button class="link" data-set="2,3,4,5">Fáciles (2-5)</button>
+      <button class="link" data-set="6,7,8,9">Difíciles (6-9)</button>
+      <button class="link" data-set="1,2,3,4,5,6,7,8,9,10">Todas</button>
+    </div>
+    <button class="big" id="trainStart">Empezar (10 preguntas)</button>
+    <div class="weak-box">
+      <p class="label">Las que más te cuestan</p>
+      <div class="weak-list" id="weakList"></div>
+      <button class="big red" id="trainWeak">Repasar mis fallos</button>
+    </div>
+  </main>
+
+  <main id="play" class="card" hidden>
+    <div class="topbar">
+      <button class="exit" id="playQuit">Volver</button>
+      <span class="count" id="tCount">1 / 10</span>
+      <span></span>
+    </div>
+    <p class="q" id="tQ">7 × 8</p>
+    <div class="ans" id="tAns" aria-live="polite"></div>
+    <div class="pad" id="tPad"></div>
+    <div id="explain" class="explain" hidden>
+      <h3 id="exTitle"></h3>
+      <div class="dots" id="dots"></div>
+      <p class="dots-cap" id="dotsCap"></p>
+      <p class="lead" id="exTip"></p>
+      <button class="big" id="exOk">¡Entendido!</button>
+    </div>
+  </main>
+
+  <main id="end" class="card center" hidden>
+    <p class="label">Entrenamiento terminado</p>
+    <p class="q" id="endScore" style="font-size:56px">8 / 10</p>
+    <p class="lead" id="endMsg"></p>
+    <div id="endMissBox">
+      <p class="label" style="margin-bottom:8px">Para repasar</p>
+      <ul class="review" id="endMiss"></ul>
+    </div>
+    <button class="big" id="again">Otra vez</button>
+    <button class="big alt" data-field>Volver al campo</button>
+  </main>
+
+  <!-- JARDÍN -->
+  <main id="garden" class="card" hidden>
+    <div class="topbar"><button class="exit" data-field>Volver</button><span class="count">Mi jardín</span><span></span></div>
+    <p class="lead">Cada casilla es una multiplicación. Cuantas más veces la aciertes, en duelos o entrenando, más crece su flor.</p>
+    <div class="garden" id="gardenGrid"></div>
+    <p class="gcap" id="gcap">Toca una casilla para verla.</p>
+    <div class="legend"><span>🥀 necesita repaso</span><span>🟫 sin plantar</span><span>🌱 1 acierto</span><span>🌿 2</span><span>🌷 ¡dominada!</span></div>
+  </main>
+
+  <!-- MUSEO -->
+  <main id="museum" class="card" hidden>
+    <div class="topbar"><button class="exit" data-field>Volver</button><span class="count" id="musCount">Mi museo</span><span></span></div>
+    <div class="ficha" id="musFicha"><p class="mus-detail">Toca un animal para ver su ficha.</p></div>
+    <div class="museum" id="museumGrid"></div>
+  </main>
+
+  <section class="talk" aria-live="polite">
+    <span class="who">Nutri</span>
+    <span class="face" aria-hidden="true">🦦</span>
+    <p id="say"></p>
+  </section>
+</div>
+
+<script>
+(function () {
+  const KEY = "islaTablas_v1";
+
+  /* ---------- Bichos ----------
+     El orden se mantiene respecto a la versión anterior para no perder el museo guardado.
+     tier: 1 común … 5 legendario. Cada bicho decide tablas, segundos por pregunta y aciertos necesarios. */
+  const TIERS = {
+    1: { name: "Común", time: 12, hits: 3, weight: 10 },
+    2: { name: "Poco común", time: 10, hits: 4, weight: 6 },
+    3: { name: "Raro", time: 8, hits: 5, weight: 4 },
+    4: { name: "Muy raro", time: 7, hits: 6, weight: 2 },
+    5: { name: "Legendario", time: 6, hits: 8, weight: 1 }
+  };
+  const CR = [
+    { e: "🐟", n: "sardina", g: "a", zone: "muelle", tier: 1, tables: [2, 3] },
+    { e: "🐠", n: "pez tropical", g: "o", zone: "muelle", tier: 2, tables: [3, 4, 5] },
+    { e: "🐡", n: "pez globo", g: "o", zone: "playa", tier: 2, tables: [4, 5], note: "Se hincha si tardas mucho…" },
+    { e: "🦀", n: "cangrejo", g: "o", zone: "playa", tier: 1, tables: [2, 10], note: "Tiene 10 patas: ¡la tabla del 10 es su favorita!" },
+    { e: "🦐", n: "gamba", g: "a", zone: "playa", tier: 1, tables: [1, 2, 5] },
+    { e: "🐙", n: "pulpo", g: "o", zone: "muelle", tier: 4, tables: [8], note: "Tiene 8 brazos, así que solo pregunta la tabla del 8." },
+    { e: "🦑", n: "calamar", g: "o", zone: "muelle", tier: 3, tables: [6, 7] },
+    { e: "🪼", n: "medusa", g: "a", zone: "playa", tier: 2, tables: [3, 5] },
+    { e: "🦞", n: "langosta", g: "a", zone: "playa", tier: 3, tables: [6, 8] },
+    { e: "🐢", n: "tortuga marina", g: "a", zone: "playa", tier: 3, tables: [3, 4, 6, 7], time: 13, hits: 7, note: "Lenta pero muy resistente: mucho tiempo, pero hay que acertar muchas." },
+    { e: "🦈", n: "tiburón", g: "o", zone: "muelle", tier: 5, tables: [7, 8, 9] },
+    { e: "🐳", n: "ballena", g: "a", zone: "muelle", tier: 5, tables: [6, 7, 8, 9], time: 7, hits: 10, note: "La reina del mar. Solo los mejores pescadores la atrapan." },
+    { e: "🦋", n: "mariposa", g: "a", zone: "pradera", tier: 2, tables: [3, 4] },
+    { e: "🐞", n: "mariquita", g: "a", zone: "pradera", tier: 1, tables: [2, 5, 10] },
+    { e: "🐝", n: "abeja", g: "a", zone: "bosque", tier: 3, tables: [6], note: "Las celdas de su panal tienen 6 lados: tabla del 6." },
+    { e: "🦗", n: "grillo", g: "o", zone: "pradera", tier: 2, tables: [3, 5] },
+    { e: "🐛", n: "oruga", g: "a", zone: "pradera", tier: 1, tables: [1, 2] },
+    { e: "🐌", n: "caracol", g: "o", zone: "pradera", tier: 1, tables: [2, 3], time: 16, note: "Va muy despacito, así que te da muchísimo tiempo." },
+    { e: "🪲", n: "escarabajo", g: "o", zone: "bosque", tier: 2, tables: [4] },
+    { e: "🐜", n: "hormiga", g: "a", zone: "pradera", tier: 1, tables: [2, 5] },
+    { e: "🕷️", n: "araña", g: "a", zone: "bosque", tier: 4, tables: [8], note: "Tiene 8 patas: ¡experta en la tabla del 8!" },
+    { e: "🦂", n: "escorpión", g: "o", zone: "bosque", tier: 5, tables: [7, 9] },
+    { e: "🐸", n: "rana", g: "a", zone: "bosque", tier: 3, tables: [4, 6, 7] },
+    { e: "🦎", n: "lagartija", g: "a", zone: "bosque", tier: 3, tables: [5, 6, 7], time: 6, note: "¡Rapidísima! Hay muy poco tiempo para contestar." },
+    // Mamíferos
+    { e: "🐰", n: "conejo", g: "o", kind: "mamifero", zone: "pradera", tier: 1, tables: [2, 5], note: "Da saltitos de 2 en 2." },
+    { e: "🐭", n: "ratón", g: "o", kind: "mamifero", zone: "pradera", tier: 1, tables: [1, 2, 3] },
+    { e: "🦔", n: "erizo", g: "o", kind: "mamifero", zone: "pradera", tier: 2, tables: [4, 5] },
+    { e: "🦝", n: "mapache", g: "o", kind: "mamifero", zone: "pradera", tier: 3, tables: [4, 8], note: "Un pequeño ladrón: te roba tiempo si te despistas." },
+    { e: "🐿️", n: "ardilla", g: "a", kind: "mamifero", zone: "bosque", tier: 2, tables: [3, 4], note: "Esconde las bellotas de 3 en 3." },
+    { e: "🦊", n: "zorro", g: "o", kind: "mamifero", zone: "bosque", tier: 3, tables: [6, 7], note: "Muy astuto: mezcla dos tablas difíciles." },
+    { e: "🦌", n: "ciervo", g: "o", kind: "mamifero", zone: "bosque", tier: 3, tables: [5, 9] },
+    { e: "🐗", n: "jabalí", g: "o", kind: "mamifero", zone: "bosque", tier: 4, tables: [7, 8] },
+    { e: "🦇", n: "murciélago", g: "o", kind: "mamifero", zone: "bosque", tier: 4, tables: [9], note: "Cuelga boca abajo y le encanta el truco del 9." },
+    { e: "🐻", n: "oso", g: "o", kind: "mamifero", zone: "bosque", tier: 5, tables: [6, 7, 8, 9], hits: 9, note: "El rey del bosque. Es fuerte, así que hay que acertar 9." },
+    { e: "🦭", n: "foca", g: "a", kind: "mamifero", zone: "playa", tier: 2, tables: [2, 4], swims: true },
+    { e: "🐬", n: "delfín", g: "o", kind: "mamifero", zone: "muelle", tier: 4, tables: [6, 9], time: 6, swims: true, note: "¡Nada rapidísimo! Hay poco tiempo." },
+    // Aves
+    { e: "🐦", n: "gorrión", g: "o", kind: "ave", zone: "pradera", tier: 1, tables: [2, 10] },
+    { e: "🕊️", n: "paloma", g: "a", kind: "ave", zone: "pradera", tier: 1, tables: [5, 10] },
+    { e: "🐓", n: "gallo", g: "o", kind: "ave", zone: "pradera", tier: 1, tables: [2, 3], note: "¡Kikirikí! Se levanta temprano para practicar." },
+    { e: "🦚", n: "pavo real", g: "o", kind: "ave", zone: "pradera", tier: 4, tables: [6, 8], note: "Presume mucho de su cola. ¡Demuéstrale que tú también sabes!" },
+    { e: "🦅", n: "águila", art: "un águila", kind: "ave", zone: "pradera", tier: 5, tables: [7, 8, 9], time: 5, note: "Vuela tan rápido que solo te da 5 segundos." },
+    { e: "🦜", n: "loro", g: "o", kind: "ave", zone: "bosque", tier: 2, tables: [3, 5], note: "Repite todo lo que dices… ¡pero primero tienes que acertarlo tú!" },
+    { e: "🦉", n: "búho", g: "o", kind: "ave", zone: "bosque", tier: 4, tables: [7, 9], note: "El más sabio del bosque: pregunta las más difíciles." },
+    { e: "🦆", n: "pato", g: "o", kind: "ave", zone: "playa", tier: 2, tables: [3, 4] },
+    { e: "🦩", n: "flamenco", g: "o", kind: "ave", zone: "playa", tier: 3, tables: [3, 6], note: "Duerme sobre 1 pata. ¡Tú no te duermas!" },
+    { e: "🦢", n: "cisne", g: "o", kind: "ave", zone: "playa", tier: 3, tables: [6, 7] },
+    { e: "🦤", n: "dodo", g: "o", kind: "ave", zone: "playa", tier: 5, tables: [6, 7, 8, 9], hits: 9, note: "¡Todo el mundo creía que había desaparecido! Es rarísimo verlo." },
+    { e: "🐧", n: "pingüino", g: "o", kind: "ave", zone: "muelle", tier: 3, tables: [4, 6], swims: true },
+    // Selva
+    { e: "🐒", n: "mono", g: "o", kind: "mamifero", zone: "selva", tier: 2, tables: [3, 4, 6], note: "Salta de rama en rama… ¡y de tabla en tabla!" },
+    { e: "🦥", n: "perezoso", g: "o", kind: "mamifero", zone: "selva", tier: 1, tables: [2, 3], time: 18, note: "Es tan lento que te da muchísimo tiempo." },
+    { e: "🦧", n: "orangután", g: "o", kind: "mamifero", zone: "selva", tier: 3, tables: [6, 7] },
+    { e: "🐘", n: "elefante", g: "o", kind: "mamifero", zone: "selva", tier: 3, tables: [4, 8], hits: 6, note: "Tiene una memoria enorme… ¡como la que necesitas para las tablas!" },
+    { e: "🐆", n: "leopardo", g: "o", kind: "mamifero", zone: "selva", tier: 4, tables: [7, 8], time: 5, note: "El más veloz de la selva: solo 5 segundos." },
+    { e: "🐅", n: "tigre", g: "o", kind: "mamifero", zone: "selva", tier: 4, tables: [6, 9] },
+    { e: "🦍", n: "gorila", g: "o", kind: "mamifero", zone: "selva", tier: 5, tables: [7, 8, 9], hits: 9, note: "El rey de la selva. ¡Se golpea el pecho cada vez que fallas!" },
+    // Pantano
+    { e: "🦟", n: "mosquito", g: "o", kind: "bicho", zone: "pantano", tier: 1, tables: [2, 5], flies: true },
+    { e: "🪰", n: "mosca", g: "a", kind: "bicho", zone: "pantano", tier: 1, tables: [1, 2, 10], flies: true },
+    { e: "🦫", n: "castor", g: "o", kind: "mamifero", zone: "pantano", tier: 2, tables: [4, 5], swims: true, note: "Construye presas palito a palito, de 4 en 4." },
+    { e: "🐍", n: "serpiente", g: "a", kind: "reptil", zone: "pantano", tier: 3, tables: [6, 8] },
+    { e: "🐊", n: "cocodrilo", g: "o", kind: "reptil", zone: "pantano", tier: 4, tables: [7, 9], swims: true, note: "¡Cuidado con sus dientes! Pregunta las del 7 y el 9." },
+    { e: "🦛", n: "hipopótamo", g: "o", kind: "mamifero", zone: "pantano", tier: 5, tables: [6, 7, 8, 9], hits: 10, swims: true, note: "El gigante del pantano. Hay que acertarle 10." },
+    // Carretera
+    { e: "🐕", n: "perro", g: "o", kind: "mamifero", zone: "carretera", tier: 1, tables: [2, 10] },
+    { e: "🐑", n: "oveja", g: "a", kind: "mamifero", zone: "carretera", tier: 1, tables: [2, 3], note: "Para dormir cuenta ovejas… ¡de 3 en 3!" },
+    { e: "🐈", n: "gato", g: "o", kind: "mamifero", zone: "carretera", tier: 2, tables: [3, 5] },
+    { e: "🐄", n: "vaca", g: "a", kind: "mamifero", zone: "carretera", tier: 2, tables: [4], note: "Tiene 4 patas y 4 estómagos: ¡tabla del 4!" },
+    { e: "🐖", n: "cerdo", g: "o", kind: "mamifero", zone: "carretera", tier: 2, tables: [3, 6] },
+    { e: "🐀", n: "rata", g: "a", kind: "mamifero", zone: "carretera", tier: 3, tables: [6, 7], time: 6, note: "Se escabulle rapidísimo." },
+    { e: "🐎", n: "caballo", g: "o", kind: "mamifero", zone: "carretera", tier: 4, tables: [7, 8], note: "Galopa por la cuneta. ¡Tendrás que ser rápido!" },
+    // Montaña
+    { e: "🐇", n: "liebre", g: "a", kind: "mamifero", zone: "montana", tier: 2, tables: [2, 4] },
+    { e: "🐐", n: "cabra", g: "a", kind: "mamifero", zone: "montana", tier: 2, tables: [3, 6], note: "Trepa por las rocas saltando de 3 en 3." },
+    { e: "🐏", n: "carnero", g: "o", kind: "mamifero", zone: "montana", tier: 3, tables: [6, 8] },
+    { e: "🦬", n: "bisonte", g: "o", kind: "mamifero", zone: "montana", tier: 3, tables: [4, 7], hits: 6 },
+    { e: "🐺", n: "lobo", g: "o", kind: "mamifero", zone: "montana", tier: 4, tables: [7, 9], note: "Aúlla en la cima. Pregunta las más difíciles." },
+    { e: "🦣", n: "mamut", g: "o", kind: "mamifero", zone: "montana", tier: 5, tables: [6, 7, 8, 9], hits: 10, note: "¡Lleva miles de años congelado! Es el animal más raro de la isla." }
+  ];
+  ["mariposa", "abeja", "mariquita", "murciélago"].forEach(n => { const c = CR.find(x => x.n === n); if (c) c.flies = true; });
+  const KINDS = { bicho: "Bichos", mar: "Criaturas del mar", reptil: "Reptiles", mamifero: "Mamíferos", ave: "Aves" };
+  CR.forEach((c, i) => {
+    c.kind = c.kind || (i < 12 ? "mar" : "bicho");
+    const t = TIERS[c.tier];
+    c.time = c.time || t.time; c.hits = c.hits || t.hits;
+    c.minB = c.tier >= 3 ? 2 : 1;
+  });
+  const art = (c) => c.art || (c.g === "a" ? "una " : "un ") + c.n;
+  const cap = (s) => s[0].toUpperCase() + s.slice(1);
+  const stars = (t) => "★".repeat(t) + "☆".repeat(5 - t);
+  const tablesText = (ts) => ts.length === 1 ? "del " + ts[0] : ts.slice(0, -1).join(", ") + " y " + ts[ts.length - 1];
+
+  const ZONES = {
+    pradera: { name: "Pradera Florida", hint: "Aquí viven los animales más tranquilos. ¡Ideal para empezar! Pero mira bien al cielo: dicen que vuela un águila…" },
+    bosque: { name: "Bosque Sombrío", hint: "En la hierba oscura se esconden animales más difíciles… ¡y hasta un oso!" },
+    playa: { name: "Playa Coral", hint: "Cangrejos, focas y aves marinas se esconden entre las dunas." },
+    muelle: { name: "Muelle Azul", hint: "¡Cuidado! En las burbujas del muelle pican los peces más grandes." },
+    carretera: { name: "Carretera de la Granja", hint: "Perros, vacas y caballos pastan en las cunetas y el trigo. ¡Cruza siempre por el paso de cebra!" },
+    montana: { name: "Montaña Nevada", hint: "Entre la nieve y las rocas viven cabras, lobos… y dicen que un mamut congelado." },
+    selva: { name: "Selva Esmeralda", hint: "Entre los helechos se esconden monos, tigres y el gran gorila." },
+    mar: { name: "Mar Abierto", hint: "Vas en barca. A veces algún animal marino se acerca a curiosear." },
+    pantano: { name: "Pantano Brumoso", hint: "Camina por las pasarelas. En los juncos acechan cocodrilos y un hipopótamo gigante." }
+  };
+
+  /* ---------- Estado guardado ---------- */
+  let S = { levels: {}, caught: [], seen: [], tables: [2, 3, 4, 5, 6, 7, 8, 9], sound: true, pos: null, intro: false, miss: {} };
+  try { const raw = localStorage.getItem(KEY); if (raw) Object.assign(S, JSON.parse(raw)); } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+
+  const $ = (id) => document.getElementById(id);
+  const say = (t) => { $("say").textContent = t; };
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const lvl = (k) => S.levels[k] || 0;
+  const miss = (k) => (S.miss && S.miss[k]) || 0;
+  // Registra cada respuesta. Un fallo suma 1 a su contador (y medio a la inversa: 7×8 ↔ 8×7);
+  // cada acierto le resta medio, así los fallos antiguos se van olvidando cuando ya se dominan.
+  function recordAnswer(k, ok) {
+    S.miss = S.miss || {};
+    const [a, b] = k.split("x").map(Number), rev = b + "x" + a;
+    if (ok) {
+      S.levels[k] = Math.min(3, lvl(k) + 1);
+      const m = Math.max(0, miss(k) - 0.5);
+      if (m) S.miss[k] = m; else delete S.miss[k];
+    } else {
+      S.miss[k] = Math.min(10, miss(k) + 1);
+      if (rev !== k) S.miss[rev] = Math.min(10, miss(rev) + 0.5);
+      S.levels[k] = miss(k) >= 2 ? 0 : Math.max(0, lvl(k) - 1);
+    }
+    save();
+  }
+  // Peso para elegir preguntas: las poco dominadas y, sobre todo, las más falladas salen mucho más
+  const weight = (k) => [16, 9, 4, 1][lvl(k)] + 16 * Math.min(miss(k), 5);
+  const weakest = (n) => Object.keys(S.miss || {}).filter(k => miss(k) >= 1).sort((x, y) => miss(y) - miss(x)).slice(0, n);
+  const PRAISE = ["¡Bien hecho!", "¡Genial!", "¡Eso es!", "¡Qué crack!", "¡Perfecto!", "¡Toma ya!", "¡Muy bien!"];
+
+  /* ---------- Sonido ---------- */
+  let ac = null;
+  function tone(freqs, dur = 0.12, type = "triangle") {
+    if (!S.sound) return;
+    try {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if (ac.state === "suspended") ac.resume();
+      freqs.forEach((f, i) => {
+        const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * dur;
+        o.type = type; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.6);
+        o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur * 1.8);
+      });
+    } catch (e) {}
+  }
+  const sfx = {
+    tap: () => tone([660], 0.05, "sine"),
+    ok: () => tone([784, 1047], 0.1),
+    hit: () => tone([988, 1319], 0.06, "square"),
+    bad: () => tone([330, 262], 0.14, "sine"),
+    meet: () => tone([523, 392, 523, 392, 659, 784], 0.07, "square"),
+    win: () => tone([523, 659, 784, 1047, 784, 1047, 1319], 0.09),
+    flee: () => tone([600, 450, 300], 0.07, "sine"),
+    tick: () => tone([880], 0.04, "square")
+  };
+  function renderSound() { $("sound").textContent = "Sonido: " + (S.sound ? "sí" : "no"); }
+  $("sound").onclick = () => { S.sound = !S.sound; save(); renderSound(); sfx.tap(); };
+
+  /* ---------- Pantallas ---------- */
+  const SCREENS = ["field", "intro", "battle", "result", "npc", "casa", "shop", "train", "play", "end", "garden", "museum"];
+  let screen = "field";
+  function show(id) {
+    screen = id;
+    SCREENS.forEach(s => $(s).hidden = s !== id);
+    held.length = 0; renderDpad();
+    if (id === "field") { renderHud(); startLoop(); }
+  }
+  function goField() {
+    stopTimer(); Q = null; show("field");
+    const z = zoneAt(P.x, P.y); say(ZONES[z].name + ". " + ZONES[z].hint);
+  }
+  document.querySelectorAll("[data-field]").forEach(b => b.onclick = () => { sfx.tap(); goField(); });
+
+  function renderHud() {
+    $("hudMuseum").textContent = S.caught.length + "/" + CR.length;
+    let n = 0; for (const k in S.levels) if (S.levels[k] >= 3) n++;
+    $("hudGarden").textContent = n + "/100";
+    const g = Object.keys(S.gifts).length;
+    $("hudCasa").textContent = g === 1 ? "1 regalo" : g + " regalos";
+    renderTitle();
+  }
+
+  /* ---------- Mapa ----------
+     T árbol · B hierba del bosque · , hierba alta · f flores · . césped · p camino · H casa
+     N Nutri · @ salida · s arena · : dunas · ~ agua · = muelle · o burbujas del muelle */
+  const WEST = [
+    "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+    "TTBBBBTTTBBBBBBTTTTBBBBBTTTBBBBT",
+    "TBBBBBBTBBBBBBBBTTBBBBBBBTBBBBBT",
+    "TBBBTBBBBBBTBBBBBBBBBTBBBBBBBBBT",
+    "TBBBBBBBBBBBBBBTBBBBBBBBBBBTBBBT",
+    "TBBBBBBBTBBBBBBpBBBBTTBBBBBBBBBT",
+    "TTTTT..TTTTTTTTpTTTTTTTT..TTTTTT",
+    "T.......f......p......f.......fT",
+    "T.,,,,,........p..........,,,,.T",
+    "T.,,,,,,..f....p...HH....,,,,,.T",
+    "T..,,,,,.......p...HH.....,,,..T",
+    "T.....f..ppppppppppppppp.f.....T",
+    "T..f.....p....N........p....f..T",
+    "T.,,,,...p.....f.......p..,,,,.T",
+    "T,,,,,,..p.............p.,,,,,,T",
+    "T.,,,,...pppppp@pppppppp..,,,,.T",
+    "T..f...........pp.........f....T",
+    "sss::::::ssssssppssss::::::sssss",
+    "s:::::::sssssssppsss:::::::sssss",
+    "sssssssssssssssppsssssssssssssss",
+    "~~~~~~~~~~~~~~~==~~~~~~~~~~~~~~~",
+    "~~~~~~~~~~~~~~~==~~~~~~~~~~~~~~~",
+    "~~~~~~~~~~~~~~o==o~~~~~~~~~~~~~~",
+    "~~~~~~~~~~~~~~o==o~~~~~~~~~~~~~~",
+    "~~~~~~~~~~~~~~oooo~~~~~~~~~~~~~~",
+    "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
+    "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  ];
+  // Este: montaña (filas 0-8), carretera (9-16), selva y pantano (17-26)
+  //  ^ roca · m tierra · n nieve · k hierba alpina · q ventisca · r asfalto · z paso de cebra · v cuneta
+  //  w trigo · G granero · J árbol de la selva · j helechos · W agua del pantano · e juncos · b pasarela · u barro
+  const EAST = [
+    "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+    "^^^nnnnqqnn^^^^^^nnnqqqnnnnn^^^^",
+    "^nnnqqqqnnnn^^^nnnqqqqq^nnnqq^^^",
+    "mmnnqqq^^nnnnnnnnnnnnnnnnqqqnn^^",
+    "mmmmmkkk^mmmmm^^mmmmkkkkmmm^^^^^",
+    "^mmkkkkmmmmkkkmmmmm^^mmkkkkkmm^^",
+    "^^mmkkkmm^^mkkkkmmmmmmmkkkm^^^^^",
+    "^^^mmmmmmm^mmmmmmpmmmmmmmm^^^^^^",
+    "^^^^^^^^^^^^p^^^^^^^^^^^^^^^^^^^",
+    "T..vvvv....wwwwwww....vvvv.....T",
+    "T..vvvv....wwwwwww..GG...vvv...T",
+    "ppppppppppppppppppp.GG.ppppppp.T",
+    "T.vv..p.......p.........p..vv..T",
+    "rrrrrrzrrrrrrrrrrrrrrrrrzrrrrrrr",
+    "rrrrrrzrrrrrrrrrrrrrrrrrzrrrrrrr",
+    "T.vv..p...vvvv.......vv.p...vv.T",
+    "T.vvv.p...vvvv.......vvvp..vvv.T",
+    "ssjjJJjpjJJjjjJJ" + "uueuuueebuuueeeT",
+    "sjjjjJjjjjjJJjjJ" + "eWWWuuebbWWWueeT",
+    "sjJjjjjJJjjjjjjj" + "uuWWWeeebWWWeeuT",
+    "~~JjjJjjjjJjjJjJ" + "eeWWWWebbbWWWeeT",
+    "~~JJjjjJjjjjjjjJ" + "eeeWWebbWbbWWWeT",
+    "~~~JjjjjjJJjjjJJ" + "uWWWeebWWWbeeeuT",
+    "~~~JJjjJjjjjjJJJ" + "uWWeeebbbbbeWWWT",
+    "~~~~JJjjjjjJJJJJ" + "uuWWWeeeWWWeeeuT",
+    "~~~~~JJJJJJJJJJJ" + "uuuuWWWWWWWWWuuT",
+    "~~~~~~~~~~~~~~~~" + "~~~~~~~~~~~~~~~~"
+  ];
+  // Aberturas en el borde este de la isla original: bosque → montaña y pradera → carretera
+  const open = (r, x, ch) => r.slice(0, x) + ch + r.slice(x + 1);
+  WEST[12] = open(open(WEST[12], 11, "M"), 12, "M"); WEST[13] = open(open(WEST[13], 11, "M"), 12, "M");
+  WEST[3] = open(WEST[3], 31, "B"); WEST[4] = open(WEST[4], 31, "B"); WEST[11] = open(WEST[11], 31, "p");
+  const MAP = WEST.map((r, i) => r + EAST[i]);
+  const MW = Math.max(...MAP.map(r => r.length)), MH = MAP.length;
+  const G = MAP.map(r => r.padEnd(MW, r[r.length - 1]).split(""));
+  let start = { x: 15, y: 15 }, nutri = { x: 14, y: 12 };
+  G.forEach((row, y) => row.forEach((ch, x) => {
+    if (ch === "@") { start = { x, y }; row[x] = "p"; }
+    if (ch === "N") nutri = { x, y };
+  }));
+  const tile = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH) ? "~" : G[y][x];
+  const WALK = new Set([".", ",", "f", "p", "s", ":", "=", "o", "B", "m", "n", "k", "q", "z", "v", "w", "j", "e", "b", "u"]);
+  const ENCOUNTER = {
+    ",": ["pradera", 0.14], "B": ["bosque", 0.16], ":": ["playa", 0.13], "o": ["muelle", 0.28],
+    "k": ["montana", 0.15], "q": ["montana", 0.18], "v": ["carretera", 0.13], "w": ["carretera", 0.13],
+    "j": ["selva", 0.17], "e": ["pantano", 0.16], "~": ["mar", 0.07]
+  };
+  // Agua por la que se puede ir en barca: el mar y el agua del pantano
+  const SAIL = new Set(["~", "W"]);
+  const inMap = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH;
+  function zoneAt(x, y) {
+    const ch = tile(x, y);
+    if (ch === "~") return "mar";
+    if (x >= 32) return y <= 8 ? "montana" : y <= 16 ? "carretera" : x < 48 ? "selva" : "pantano";
+    if (ch === "=" || ch === "o") return "muelle";
+    if (y <= 6) return "bosque";
+    if (y >= 17) return "playa";
+    return "pradera";
+  }
+
+  const P = { x: start.x, y: start.y, px: start.x, py: start.y, dir: "down", move: null, cool: 2 };
+  if (S.pos && (WALK.has(tile(S.pos.x, S.pos.y)) || SAIL.has(tile(S.pos.x, S.pos.y)))) { P.x = P.px = S.pos.x; P.y = P.py = S.pos.y; }
+  let lastZone = zoneAt(P.x, P.y);
+  $("zoneTag").textContent = ZONES[lastZone].name;
+
+  /* ---------- Controles ---------- */
+  const held = [];
+  const DIRS = { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] };
+  const KEYDIR = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right" };
+  function hold(d) { if (!held.includes(d)) held.push(d); renderDpad(); }
+  function release(d) { const i = held.indexOf(d); if (i >= 0) held.splice(i, 1); renderDpad(); }
+  function renderDpad() { document.querySelectorAll("#dpad [data-dir]").forEach(b => b.classList.toggle("on", held.includes(b.dataset.dir))); }
+  document.querySelectorAll("#dpad [data-dir]").forEach(b => {
+    const d = b.dataset.dir;
+    b.addEventListener("pointerdown", e => { e.preventDefault(); b.setPointerCapture?.(e.pointerId); hold(d); });
+    ["pointerup", "pointercancel", "lostpointercapture"].forEach(ev => b.addEventListener(ev, () => release(d)));
+    b.addEventListener("contextmenu", e => e.preventDefault());
+  });
+
+  function tryMove(d) {
+    P.dir = d;
+    const [dx, dy] = DIRS[d], nx = P.x + dx, ny = P.y + dy;
+    if (nx === nutri.x && ny === nutri.y) { talkNutri(); release(d); return; }
+    const npc = NPCS.find(n => n.x === nx && n.y === ny);
+    if (npc) { release(d); openNpc(npc); return; }
+    if (tile(nx, ny) === "H") { release(d); openCasa(); return; }
+    if (tile(nx, ny) === "M") { release(d); openShop(); return; }
+    if (tile(nx, ny) === "r") { say("¡Por la carretera no! Cruza siempre por el paso de cebra."); return; }
+    if (!inMap(nx, ny)) { if (SAIL.has(tile(P.x, P.y))) say("Más allá no se puede navegar: ¡el mar es demasiado profundo!"); return; }
+    const zTo = zoneAt(nx, ny);
+    if ((WALK.has(tile(nx, ny)) || SAIL.has(tile(nx, ny))) && zTo !== zoneAt(P.x, P.y) && !zoneOpen(zTo)) { say(lockMsg(zTo)); return; }
+    const toWater = SAIL.has(tile(nx, ny)), onWater = SAIL.has(tile(P.x, P.y));
+    if (!WALK.has(tile(nx, ny)) && !toWater) return;
+    if (toWater && !onWater) { say(S.sailed ? "¡A navegar! ⛵" : "¡Te subes a la barca! Ahora puedes ir por el agua. En mar abierto a veces aparecen animales marinos."); S.sailed = true; sfx.tap(); }
+    if (!toWater && onWater) say("Bajas de la barca y vuelves a tierra firme.");
+    if (CARS.some(c => c.y === ny && Math.abs(c.x - nx) < 0.9)) { say("¡Cuidado, que pasa un coche! Espera a que pase."); return; }
+    if (tile(nx, ny) === "z" && tile(P.x, P.y) !== "z") say("Paso de cebra: los coches se paran para dejarte cruzar.");
+    P.move = { fx: P.x, fy: P.y, tx: nx, ty: ny, t0: performance.now() };
+    PET.fx = PET.x; PET.fy = PET.y; PET.x = P.x; PET.y = P.y;
+  }
+  const STEP_MS = 170;
+  // Coches decorativos que se paran ante el paso de cebra si estás cruzando
+  const CARS = [
+    { y: 13, x: 34, v: 2.6, e: "🚗" }, { y: 13, x: 52, v: 1.3, e: "🚜" },
+    { y: 14, x: 60, v: -2.9, e: "🚙" }, { y: 14, x: 42, v: -2.1, e: "🚌" }
+  ];
+  function updateCars(dt) {
+    const pts = [[P.x, P.y]];
+    if (P.move) pts.push([P.move.tx, P.move.ty]);
+    CARS.forEach(c => {
+      const dir = Math.sign(c.v);
+      const blockedByPlayer = pts.some(([px, py]) => py === c.y && tile(px, py) === "z" && (px - c.x) * dir > 0 && (px - c.x) * dir < 1.4);
+      const blockedByCar = CARS.some(o => o !== c && o.y === c.y && (o.x - c.x) * dir > 0 && (o.x - c.x) * dir < 1.2);
+      if (blockedByPlayer || blockedByCar) return;
+      c.x += c.v * dt;
+      if (c.x > MW + 0.5) c.x = 31.5; else if (c.x < 31.5) c.x = MW + 0.5;
+    });
+  }
+
+  const NUTRI_TALK = [
+    "¡Hola! Pasea por la hierba alta y aparecerán animales. ¡Gánales el duelo para llevarlos al museo!",
+    "Los animales de la pradera son los más fáciles. Los del muelle… ¡uf!",
+    "Si un animal se te escapa, pulsa Entrenar y practicamos juntos sin prisa.",
+    "¿Sabías que el pulpo y la araña solo preguntan la tabla del 8? ¡Por sus 8 patas!",
+    "Cada acierto riega una flor de tu jardín. ¡A ver si lo llenas entero!",
+    "Hay vecinos por la isla con retos. ¡Cuanto más difícil el reto, mejor es el regalo!",
+    "Dicen que la Capitana Pina guarda tesoros en su barca, al final del muelle…",
+    "Al este de la isla hay una carretera. Desde allí se sube a la montaña o se baja a la selva y al pantano.",
+    "Solo te saldrán animales que todavía no tienes. ¡Así completarás antes el museo!",
+    "Toca un animal en el museo para ver su ficha y elegirlo como mascota. ¡Cada mascota te ayuda de una forma distinta!",
+    "Los vecinos tienen encargos: si les traes el animal que piden, te pagan con monedas.",
+    "Algunas zonas están cerradas con vallas 🚧. ¡Atrapa más animales para abrirlas!",
+    "En el pueblo está la tienda de Rufo: te cambia regalos por monedas para comprar objetos mágicos y sombreros.",
+    "¿Sabías que puedes navegar? Camina hacia el mar o el agua del pantano y te subirás a la barca."
+  ];
+  function talkNutri() {
+    const miss = CR.length - S.caught.length;
+    say(pick(NUTRI_TALK) + (miss ? ` Te quedan ${miss} animales por descubrir.` : " ¡Has completado el museo! Eres una leyenda de la isla."));
+    sfx.tap();
+  }
+
+  function onStep() {
+    S.pos = { x: P.x, y: P.y }; save();
+    const z = zoneAt(P.x, P.y);
+    if (z !== lastZone) {
+      lastZone = z; $("zoneTag").textContent = ZONES[z].name;
+      const left = missingIn(z).length;
+      say(ZONES[z].name + ". " + (left ? ZONES[z].hint + ` Te faltan ${left} ${left === 1 ? "animal" : "animales"} de esta zona.` : "¡Aquí ya los tienes todos! Busca en otras zonas."));
+    }
+    if (P.cool > 0) { P.cool--; return; }
+    const enc = ENCOUNTER[tile(P.x, P.y)];
+    if (enc && Math.random() < enc[1]) encounter(enc[0]);
+  }
+
+  // Solo salen animales que aún no están en el museo
+  // En mar abierto salen los animales del mar, la playa y el muelle que viven en el agua
+  const inZone = (c, zone) => zone === "mar" ? (c.zone === "muelle" || c.zone === "playa") && (c.kind === "mar" || c.swims) : c.zone === zone;
+  const missingIn = (zone) => CR.map((c, i) => i).filter(i => inZone(CR[i], zone) && !S.caught.includes(i));
+  let doneWarned = null;
+  function encounter(zone) {
+    const pool = missingIn(zone);
+    if (!pool.length) {
+      if (doneWarned !== zone) { doneWarned = zone; say(`¡Ya tienes todos los animales de ${ZONES[zone].name}! Busca en otras zonas los que te faltan.`); }
+      return;
+    }
+    const w = pool.map(i => TIERS[CR[i].tier].weight);
+    let r = Math.random() * w.reduce((a, b) => a + b, 0), idx = pool[0];
+    for (let j = 0; j < pool.length; j++) { r -= w[j]; if (r <= 0) { idx = pool[j]; break; } }
+    stopLoop(); held.length = 0; renderDpad(); P.move = null;
+    sfx.meet();
+    const f = $("flash"); f.hidden = false;
+    setTimeout(() => { f.hidden = true; showIntro(idx); }, 750);
+  }
+
+  /* ---------- Dibujo del mapa ---------- */
+  const cv = $("map"), cx = cv.getContext("2d");
+  let VW = 300, VH = 240, TS = 40;
+  function sizeCanvas() {
+    const w = $("mapwrap").clientWidth || 300;
+    // Casillas más grandes cuanto más ancho es el mapa (unas 18 a lo ancho en pantallas grandes)
+    TS = w < 420 ? 34 : w < 800 ? 40 : Math.min(80, Math.round(w / 18));
+    const big = w >= 800;
+    VW = w; VH = Math.round(big ? Math.max(360, Math.min(w * 0.62, window.innerHeight - 330)) : Math.max(240, Math.min(w * 1.05, 460, window.innerHeight - 400)));
+    const dpr = window.devicePixelRatio || 1;
+    cv.width = Math.round(VW * dpr); cv.height = Math.round(VH * dpr);
+    cv.style.height = VH + "px";
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw(performance.now());
+  }
+  new ResizeObserver(sizeCanvas).observe($("mapwrap"));
+  window.addEventListener("resize", sizeCanvas);
+
+  const hash = (x, y, s = 0) => { let h = (x * 374761393 + y * 668265263 + s * 2147483647) >>> 0; h = (h ^ (h >>> 13)) * 1274126177 >>> 0; return (h >>> 0) / 4294967295; };
+  const C = {
+    grass: "#8fd07a", grass2: "#88c973", tall: "#74bb62", blade: "#4a9443",
+    forest: "#5a9f57", fblade: "#2f6b39", path: "#ead6a2", pathEdge: "#d9c088",
+    sand: "#f3e2b3", sand2: "#ecd8a2", tuft: "#8dbb5a",
+    water: "#4fb2c6", wave: "#8fd6e3", plank: "#c79463", plankLine: "#96663d",
+    trunk: "#8a5a3b", leaf: "#3f8f4a", leafHi: "#5fb35d", pine: "#2f6f3f", pineHi: "#4b8f55"
+  };
+
+  function blades(sx, sy, color, t, x, y, onlyBottom) {
+    cx.strokeStyle = color; cx.lineWidth = 2; cx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const bx = sx + TS * (0.15 + 0.7 * hash(x, y, i)), by = sy + TS * (onlyBottom ? 0.7 + 0.25 * hash(x, y, i + 9) : 0.3 + 0.6 * hash(x, y, i + 9));
+      const sway = Math.sin(t / 500 + x + i) * 1.5, h = TS * 0.22;
+      cx.beginPath();
+      cx.moveTo(bx - 4, by); cx.lineTo(bx - 1 + sway, by - h);
+      cx.moveTo(bx, by); cx.lineTo(bx + sway, by - h * 1.2);
+      cx.moveTo(bx + 4, by); cx.lineTo(bx + 1 + sway, by - h);
+      cx.stroke();
+    }
+  }
+
+  const BLADE_ON = { ",": "#4a9443", "B": "#2f6b39", "v": "#5f8a33", "j": "#2a6b30", "e": "#50703a", "w": "#b8923a", "k": "#6f8f4a", "q": "#a9c4dc" };
+  function dots(sx, sy, color, x, y, n, r) {
+    cx.fillStyle = color;
+    for (let i = 0; i < n; i++) { cx.beginPath(); cx.arc(sx + TS * (0.1 + 0.8 * hash(x, y, i + 20)), sy + TS * (0.1 + 0.8 * hash(x, y, i + 30)), r, 0, 7); cx.fill(); }
+  }
+  const EXTRA = {
+    "^": (x, y, sx, sy) => {
+      const s = TS; cx.fillStyle = "#8f887c"; cx.fillRect(sx, sy, s + 1, s + 1);
+      cx.fillStyle = "#a89f90";
+      cx.beginPath(); cx.moveTo(sx + s * 0.1, sy + s * 0.9); cx.lineTo(sx + s * 0.45, sy + s * 0.12); cx.lineTo(sx + s * 0.9, sy + s * 0.9); cx.closePath(); cx.fill();
+      if (y <= 2) { cx.fillStyle = "#f4f7fb"; cx.beginPath(); cx.moveTo(sx + s * 0.3, sy + s * 0.46); cx.lineTo(sx + s * 0.45, sy + s * 0.12); cx.lineTo(sx + s * 0.62, sy + s * 0.46); cx.closePath(); cx.fill(); }
+    },
+    "m": (x, y, sx, sy) => { cx.fillStyle = (x + y) % 2 ? "#b9ae97" : "#b3a890"; cx.fillRect(sx, sy, TS + 1, TS + 1); dots(sx, sy, "#9c917b", x, y, 3, 1.8); },
+    "n": (x, y, sx, sy) => { cx.fillStyle = (x + y) % 2 ? "#eef3f8" : "#e7eef6"; cx.fillRect(sx, sy, TS + 1, TS + 1); dots(sx, sy, "#cfe0ef", x, y, 3, 2); },
+    "k": (x, y, sx, sy, t) => { EXTRA.m(x, y, sx, sy); blades(sx, sy, BLADE_ON.k, t, x, y); },
+    "q": (x, y, sx, sy, t) => { EXTRA.n(x, y, sx, sy); blades(sx, sy, BLADE_ON.q, t, x, y); },
+    "r": (x, y, sx, sy) => {
+      const s = TS; cx.fillStyle = "#5d6168"; cx.fillRect(sx, sy, s + 1, s + 1);
+      cx.fillStyle = "#e9e4d0";
+      if (tile(x, y - 1) !== "r" && tile(x, y - 1) !== "z") cx.fillRect(sx, sy + 2, s + 1, 2);
+      if (tile(x, y + 1) !== "r" && tile(x, y + 1) !== "z") cx.fillRect(sx, sy + s - 4, s + 1, 2);
+      if (tile(x, y + 1) === "r") cx.fillRect(sx + s * 0.2, sy + s - 1.5, s * 0.5, 3);
+    },
+    "z": (x, y, sx, sy) => {
+      const s = TS; cx.fillStyle = "#5d6168"; cx.fillRect(sx, sy, s + 1, s + 1);
+      cx.fillStyle = "#f2f2ee";
+      for (let i = 0; i < 3; i++) cx.fillRect(sx + s * 0.08, sy + s * (0.08 + i * 0.32), s * 0.84, s * 0.18);
+    },
+    "v": (x, y, sx, sy, t) => { cx.fillStyle = "#9cc25e"; cx.fillRect(sx, sy, TS + 1, TS + 1); blades(sx, sy, BLADE_ON.v, t, x, y); },
+    "w": (x, y, sx, sy, t) => {
+      const s = TS; cx.fillStyle = "#e3c46a"; cx.fillRect(sx, sy, s + 1, s + 1);
+      cx.strokeStyle = "#b8923a"; cx.fillStyle = "#c9a23f"; cx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const bx = sx + s * (0.15 + 0.7 * hash(x, y, i)), by = sy + s * (0.5 + 0.4 * hash(x, y, i + 9)), sw = Math.sin(t / 600 + x + i) * 1.5;
+        cx.beginPath(); cx.moveTo(bx, by); cx.lineTo(bx + sw, by - s * 0.3); cx.stroke();
+        cx.beginPath(); cx.ellipse(bx + sw, by - s * 0.34, 2, 4, 0, 0, 7); cx.fill();
+      }
+    },
+    "G": (x, y, sx, sy) => { cx.fillStyle = C.grass; cx.fillRect(sx, sy, TS + 1, TS + 1); },
+    "M": (x, y, sx, sy) => { cx.fillStyle = C.grass; cx.fillRect(sx, sy, TS + 1, TS + 1); },
+    "J": (x, y, sx, sy) => {
+      const s = TS; cx.fillStyle = "#3e8a45"; cx.fillRect(sx, sy, s + 1, s + 1);
+      cx.fillStyle = "#7a5230"; cx.fillRect(sx + s * 0.44, sy + s * 0.5, s * 0.12, s * 0.45);
+      for (let i = 0; i < 6; i++) {
+        const a = i * 1.047 + hash(x, y, 1);
+        cx.fillStyle = i % 2 ? "#2c6e35" : "#4ea653";
+        cx.beginPath(); cx.ellipse(sx + s / 2 + Math.cos(a) * s * 0.2, sy + s * 0.4 + Math.sin(a) * s * 0.14, s * 0.26, s * 0.1, a, 0, 7); cx.fill();
+      }
+    },
+    "j": (x, y, sx, sy, t) => { cx.fillStyle = "#4f9f4a"; cx.fillRect(sx, sy, TS + 1, TS + 1); blades(sx, sy, BLADE_ON.j, t, x, y); if (hash(x, y, 50) > 0.8) dots(sx, sy, "#f28ab0", x, y, 1, 3); },
+    "W": (x, y, sx, sy, t) => {
+      const s = TS; cx.fillStyle = "#56735a"; cx.fillRect(sx, sy, s + 1, s + 1);
+      cx.strokeStyle = "#6e8c6f"; cx.lineWidth = 1.5;
+      const off = Math.sin(t / 900 + x + y) * 3;
+      cx.beginPath(); cx.arc(sx + s * 0.35 + off, sy + s * 0.5, 5, Math.PI * 1.1, Math.PI * 1.9); cx.stroke();
+      if (hash(x, y, 3) > 0.55) {
+        cx.fillStyle = "#7fb069"; cx.beginPath(); cx.arc(sx + s * 0.62, sy + s * 0.62, s * 0.16, 0.4, Math.PI * 2); cx.lineTo(sx + s * 0.62, sy + s * 0.62); cx.fill();
+        if (hash(x, y, 4) > 0.7) { cx.fillStyle = "#f7a8c4"; cx.beginPath(); cx.arc(sx + s * 0.58, sy + s * 0.58, 3.5, 0, 7); cx.fill(); }
+      }
+    },
+    "e": (x, y, sx, sy, t) => {
+      const s = TS; cx.fillStyle = "#7a9660"; cx.fillRect(sx, sy, s + 1, s + 1);
+      cx.lineWidth = 2;
+      for (let i = 0; i < 4; i++) {
+        const bx = sx + s * (0.15 + 0.7 * hash(x, y, i)), by = sy + s * 0.92, sw = Math.sin(t / 500 + x + i) * 2;
+        cx.strokeStyle = "#50703a"; cx.beginPath(); cx.moveTo(bx, by); cx.lineTo(bx + sw, by - s * 0.6); cx.stroke();
+        cx.fillStyle = "#6b4a2a"; cx.beginPath(); cx.ellipse(bx + sw, by - s * 0.55, 2.5, 5, 0, 0, 7); cx.fill();
+      }
+    },
+    "b": (x, y, sx, sy, t) => {
+      EXTRA.W(x, y, sx, sy, t);
+      const s = TS; cx.fillStyle = "#b88a5a"; cx.fillRect(sx + s * 0.08, sy, s * 0.84, s + 1);
+      cx.strokeStyle = "#8a6038"; cx.lineWidth = 1.5;
+      for (let i = 1; i < 4; i++) { cx.beginPath(); cx.moveTo(sx + s * 0.08, sy + s * i / 4); cx.lineTo(sx + s * 0.92, sy + s * i / 4); cx.stroke(); }
+    },
+    "u": (x, y, sx, sy) => { cx.fillStyle = "#8a7152"; cx.fillRect(sx, sy, TS + 1, TS + 1); dots(sx, sy, "#75603f", x, y, 4, 3); }
+  };
+  function drawShop(sx, sy) {
+    const s = TS;
+    cx.fillStyle = "rgba(0,0,0,.12)"; cx.beginPath(); cx.ellipse(sx + s, sy + s * 1.92, s * 0.95, s * 0.12, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#cfe9e4"; cx.fillRect(sx + s * 0.15, sy + s * 0.55, s * 1.7, s * 1.35);
+    // Toldo de rayas
+    for (let i = 0; i < 6; i++) { cx.fillStyle = i % 2 ? "#fffaee" : "#e0735c"; cx.fillRect(sx + s * (0.05 + i * 0.315), sy + s * 0.5, s * 0.32, s * 0.36); }
+    cx.fillStyle = "#2c9fb3"; cx.fillRect(sx + s * 0.05, sy + s * 0.12, s * 1.9, s * 0.4);
+    cx.fillStyle = "#fffaee"; cx.font = `700 ${Math.round(s * 0.3)}px Fredoka, sans-serif`;
+    cx.fillText("TIENDA", sx + s, sy + s * 0.33);
+    cx.fillStyle = "#8a5a3b"; cx.fillRect(sx + s * 0.8, sy + s * 1.3, s * 0.4, s * 0.6);
+    cx.fillStyle = "#bfe8f2"; cx.fillRect(sx + s * 0.3, sy + s * 1.1, s * 0.35, s * 0.35); cx.fillRect(sx + s * 1.35, sy + s * 1.1, s * 0.35, s * 0.35);
+    cx.font = `${Math.round(s * 0.8)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+  }
+  function drawBarn(sx, sy) {
+    const s = TS;
+    cx.fillStyle = "rgba(0,0,0,.12)"; cx.beginPath(); cx.ellipse(sx + s, sy + s * 1.92, s * 0.95, s * 0.12, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#b5463a"; cx.fillRect(sx + s * 0.15, sy + s * 0.7, s * 1.7, s * 1.2);
+    cx.fillStyle = "#6e2f28";
+    cx.beginPath(); cx.moveTo(sx + s * 0.02, sy + s * 0.8); cx.lineTo(sx + s, sy + s * 0.05); cx.lineTo(sx + s * 1.98, sy + s * 0.8); cx.closePath(); cx.fill();
+    cx.fillStyle = "#f4ead5"; cx.fillRect(sx + s * 0.7, sy + s * 1.15, s * 0.6, s * 0.75);
+    cx.strokeStyle = "#b5463a"; cx.lineWidth = 3;
+    cx.beginPath(); cx.moveTo(sx + s * 0.7, sy + s * 1.15); cx.lineTo(sx + s * 1.3, sy + s * 1.9); cx.moveTo(sx + s * 1.3, sy + s * 1.15); cx.lineTo(sx + s * 0.7, sy + s * 1.9); cx.stroke();
+  }
+
+  function drawTile(ch, x, y, sx, sy, t) {
+    if (EXTRA[ch]) return EXTRA[ch](x, y, sx, sy, t);
+    const s = TS;
+    const base = { ".": (x + y) % 2 ? C.grass : C.grass2, ",": C.tall, "f": C.grass, "p": C.path, "B": C.forest, "T": y <= 6 ? C.forest : C.grass, "H": C.grass, "N": C.grass, "s": (x + y) % 2 ? C.sand : C.sand2, ":": C.sand, "~": C.water, "=": C.water, "o": C.water }[ch] || C.grass;
+    cx.fillStyle = base; cx.fillRect(sx, sy, s + 1, s + 1);
+    if (ch === ",") blades(sx, sy, C.blade, t, x, y);
+    else if (ch === "B") blades(sx, sy, C.fblade, t, x, y);
+    else if (ch === ":") { cx.fillStyle = C.sand2; cx.fillRect(sx, sy, s + 1, s + 1); blades(sx, sy, C.tuft, t, x, y); }
+    else if (ch === "f") {
+      const cols = ["#ffffff", "#f7a8c4", "#f4b73a", "#b99cf0", "#f08a6c"];
+      for (let i = 0; i < 3; i++) {
+        const fx = sx + s * (0.2 + 0.6 * hash(x, y, i)), fy = sy + s * (0.2 + 0.6 * hash(x, y, i + 5));
+        cx.fillStyle = cols[Math.floor(hash(x, y, i + 3) * cols.length)];
+        for (let p = 0; p < 5; p++) { const a = p * 1.2566; cx.beginPath(); cx.arc(fx + Math.cos(a) * 3.2, fy + Math.sin(a) * 3.2, 2.6, 0, 7); cx.fill(); }
+        cx.fillStyle = "#f4d03a"; cx.beginPath(); cx.arc(fx, fy, 2, 0, 7); cx.fill();
+      }
+    } else if (ch === "p") {
+      cx.fillStyle = C.pathEdge;
+      for (let i = 0; i < 3; i++) { cx.beginPath(); cx.arc(sx + s * hash(x, y, i), sy + s * hash(x, y, i + 4), 1.6, 0, 7); cx.fill(); }
+    } else if (ch === "s" && hash(x, y, 7) > 0.9) {
+      cx.fillStyle = "#f7c6b4"; cx.beginPath(); cx.arc(sx + s * 0.5, sy + s * 0.5, 4, Math.PI, 0); cx.fill();
+    } else if (ch === "~" || ch === "=" || ch === "o") {
+      cx.strokeStyle = C.wave; cx.lineWidth = 2;
+      const off = Math.sin(t / 700 + x * 0.8 + y) * 4;
+      cx.beginPath(); cx.arc(sx + s * 0.3 + off, sy + s * 0.4, 5, Math.PI * 1.1, Math.PI * 1.9); cx.stroke();
+      cx.beginPath(); cx.arc(sx + s * 0.7 - off, sy + s * 0.8, 5, Math.PI * 1.1, Math.PI * 1.9); cx.stroke();
+      if (ch !== "~") {
+        cx.fillStyle = C.plank; cx.fillRect(sx, sy, s + 1, s + 1);
+        cx.strokeStyle = C.plankLine; cx.lineWidth = 1.5;
+        for (let i = 1; i < 4; i++) { cx.beginPath(); cx.moveTo(sx, sy + s * i / 4); cx.lineTo(sx + s, sy + s * i / 4); cx.stroke(); }
+        if (ch === "o") {
+          cx.fillStyle = "rgba(255,255,255,.85)";
+          for (let i = 0; i < 3; i++) {
+            const ph = ((t / 900 + hash(x, y, i)) % 1);
+            cx.beginPath(); cx.arc(sx + s * (0.25 + 0.5 * hash(x, y, i + 2)), sy + s * (0.9 - ph * 0.8), 2 + 2 * (1 - ph), 0, 7); cx.fill();
+          }
+        }
+      }
+    }
+    if (ch === "T") {
+      const pine = y <= 6;
+      cx.fillStyle = C.trunk; cx.fillRect(sx + s * 0.43, sy + s * 0.6, s * 0.14, s * 0.32);
+      cx.fillStyle = pine ? C.pine : C.leaf;
+      cx.beginPath(); cx.arc(sx + s / 2, sy + s * 0.42, s * 0.4, 0, 7); cx.fill();
+      cx.fillStyle = pine ? C.pineHi : C.leafHi;
+      cx.beginPath(); cx.arc(sx + s * 0.4, sy + s * 0.33, s * 0.17, 0, 7); cx.fill();
+    }
+  }
+
+  function drawHouse(sx, sy) {
+    const s = TS;
+    cx.fillStyle = "rgba(0,0,0,.12)"; cx.beginPath(); cx.ellipse(sx + s, sy + s * 1.92, s * 0.95, s * 0.12, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#fff4dc"; cx.fillRect(sx + s * 0.18, sy + s * 0.8, s * 1.64, s * 1.1);
+    cx.fillStyle = "#e0735c";
+    cx.beginPath(); cx.moveTo(sx + s * 0.02, sy + s * 0.9); cx.lineTo(sx + s * 0.4, sy + s * 0.18); cx.lineTo(sx + s * 1.6, sy + s * 0.18); cx.lineTo(sx + s * 1.98, sy + s * 0.9); cx.closePath(); cx.fill();
+    cx.fillStyle = "#8a5a3b"; cx.fillRect(sx + s * 0.85, sy + s * 1.3, s * 0.32, s * 0.6);
+    cx.fillStyle = "#bfe8f2"; cx.fillRect(sx + s * 0.35, sy + s * 1.1, s * 0.3, s * 0.3); cx.fillRect(sx + s * 1.35, sy + s * 1.1, s * 0.3, s * 0.3);
+  }
+
+  // Barca en dos capas: el fondo va detrás del personaje y el casco por delante, tapándole las piernas
+  const boatBob = (t) => Math.sin(t / 350) * 1.5;
+  function drawBoatBack(px, py, t) {
+    const s = TS, x = px + s / 2, y = py + s / 2 + boatBob(t);
+    cx.fillStyle = "rgba(255,255,255,.45)";
+    cx.beginPath(); cx.ellipse(x, y + s * 0.34, s * 0.52, s * 0.1, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#6e4a2c";
+    cx.beginPath(); cx.ellipse(x, y + s * 0.12, s * 0.42, s * 0.12, 0, 0, 7); cx.fill();
+  }
+  function drawBoatFront(px, py, dir, moving, t) {
+    const s = TS, x = px + s / 2, y = py + s / 2 + boatBob(t);
+    cx.fillStyle = "#b5763f";
+    cx.beginPath();
+    cx.moveTo(x - s * 0.48, y + s * 0.1); cx.lineTo(x + s * 0.48, y + s * 0.1);
+    cx.lineTo(x + s * 0.34, y + s * 0.34); cx.lineTo(x - s * 0.34, y + s * 0.34); cx.closePath(); cx.fill();
+    cx.fillStyle = "#8a5a2f"; cx.fillRect(x - s * 0.44, y + s * 0.18, s * 0.88, s * 0.04);
+    // Remo que se mueve al navegar
+    const a = moving ? Math.sin(t / 90) * 0.5 : 0.2, side = dir === "left" ? -1 : 1;
+    cx.strokeStyle = "#e3c08a"; cx.lineWidth = 3; cx.lineCap = "round";
+    cx.beginPath(); cx.moveTo(x + side * s * 0.1, y); cx.lineTo(x + side * s * (0.5 + 0.1 * Math.cos(a)), y + s * (0.3 + 0.1 * Math.sin(a))); cx.stroke();
+  }
+  function drawPlayer(px, py, dir, walking, t) {
+    const s = TS, x = px + s / 2, y = py + s / 2;
+    const bob = walking ? Math.abs(Math.sin(t / 70)) * 2 : 0;
+    const leg = walking ? Math.sin(t / 70) * 3 : 0;
+    cx.fillStyle = "rgba(0,0,0,.18)"; cx.beginPath(); cx.ellipse(x, y + s * 0.4, s * 0.24, s * 0.07, 0, 0, 7); cx.fill();
+    cx.fillStyle = "#3d4f7a";
+    cx.fillRect(x - s * 0.13, y + s * 0.2, s * 0.1, s * 0.16 + leg);
+    cx.fillRect(x + s * 0.03, y + s * 0.2, s * 0.1, s * 0.16 - leg);
+    cx.fillStyle = "#e0735c";
+    cx.beginPath(); cx.roundRect ? cx.roundRect(x - s * 0.2, y - s * 0.02 - bob, s * 0.4, s * 0.28, 6) : cx.rect(x - s * 0.2, y - s * 0.02 - bob, s * 0.4, s * 0.28); cx.fill();
+    const hy = y - s * 0.16 - bob;
+    cx.fillStyle = "#ffd6ad"; cx.beginPath(); cx.arc(x, hy, s * 0.2, 0, 7); cx.fill();
+    cx.fillStyle = "#6b4226";
+    if (dir === "up") { cx.beginPath(); cx.arc(x, hy, s * 0.21, 0, 7); cx.fill(); }
+    else { cx.beginPath(); cx.arc(x, hy - s * 0.03, s * 0.21, Math.PI * 1.02, Math.PI * 1.98); cx.fill(); }
+    cx.fillStyle = "#2b2a24";
+    const ey = hy + s * 0.03;
+    if (dir === "down") { cx.beginPath(); cx.arc(x - s * 0.07, ey, 2, 0, 7); cx.arc(x + s * 0.07, ey, 2, 0, 7); cx.fill(); cx.fillStyle = "#f7a8a0"; cx.beginPath(); cx.arc(x - s * 0.12, ey + 4, 2, 0, 7); cx.arc(x + s * 0.12, ey + 4, 2, 0, 7); cx.fill(); }
+    if (dir === "left") { cx.beginPath(); cx.arc(x - s * 0.1, ey, 2, 0, 7); cx.fill(); }
+    if (dir === "right") { cx.beginPath(); cx.arc(x + s * 0.1, ey, 2, 0, 7); cx.fill(); }
+    if (S.hat) {
+      cx.font = `${Math.round(s * 0.42)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+      cx.fillText(S.hat, x, hy - s * 0.2);
+      cx.font = `${Math.round(s * 0.8)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    }
+  }
+
+  function draw(t) {
+    const camX = Math.max(0, Math.min(MW * TS - VW, (P.px + 0.5) * TS - VW / 2));
+    const camY = Math.max(0, Math.min(MH * TS - VH, (P.py + 0.5) * TS - VH / 2));
+    const x0 = Math.floor(camX / TS), y0 = Math.floor(camY / TS);
+    const x1 = Math.min(MW - 1, Math.ceil((camX + VW) / TS)), y1 = Math.min(MH - 1, Math.ceil((camY + VH) / TS));
+    cx.fillStyle = C.water; cx.fillRect(0, 0, VW, VH);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) drawTile(G[y][x], x, y, x * TS - camX, y * TS - camY, t);
+    for (let y = Math.max(0, y0 - 1); y <= y1; y++) for (let x = Math.max(0, x0 - 1); x <= x1; x++) {
+      if (G[y][x] === "H" && tile(x - 1, y) !== "H" && tile(x, y - 1) !== "H") drawHouse(x * TS - camX, y * TS - camY);
+      if (G[y][x] === "G" && tile(x - 1, y) !== "G" && tile(x, y - 1) !== "G") drawBarn(x * TS - camX, y * TS - camY);
+      if (G[y][x] === "M" && tile(x - 1, y) !== "M" && tile(x, y - 1) !== "M") drawShop(x * TS - camX, y * TS - camY);
+    }
+    cx.font = `${Math.round(TS * 0.8)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    cx.textAlign = "center"; cx.textBaseline = "middle";
+    cx.fillText("🦦", nutri.x * TS - camX + TS / 2, nutri.y * TS - camY + TS / 2 + Math.sin(t / 400) * 2);
+    GATES.forEach(([gx, gy, z]) => {
+      if (zoneOpen(z)) return;
+      const sx = gx * TS - camX + TS / 2, sy = gy * TS - camY + TS / 2;
+      if (sx > -TS && sy > -TS && sx < VW + TS && sy < VH + TS) cx.fillText("🚧", sx, sy);
+    });
+    NPCS.forEach((n, i) => {
+      const nx = n.x * TS - camX + TS / 2, ny = n.y * TS - camY + TS / 2;
+      if (nx < -TS || ny < -TS || nx > VW + TS || ny > VH + TS) return;
+      if (n.boat) {
+        cx.fillStyle = "#8a5a3b";
+        cx.beginPath(); cx.moveTo(nx - TS * 0.55, ny + TS * 0.05); cx.lineTo(nx + TS * 0.55, ny + TS * 0.05); cx.lineTo(nx + TS * 0.38, ny + TS * 0.42); cx.lineTo(nx - TS * 0.38, ny + TS * 0.42); cx.closePath(); cx.fill();
+      }
+      cx.fillText(n.e, nx, ny - (n.boat ? TS * 0.12 : 0) + Math.sin(t / 450 + i) * 2);
+      // Bocadillo con "!" para que se vea que se puede hablar
+      const by = ny - TS * 0.78 + Math.sin(t / 300 + i) * 2;
+      cx.fillStyle = "#fffaee"; cx.beginPath(); cx.arc(nx + TS * 0.3, by, TS * 0.2, 0, 7); cx.fill();
+      cx.fillStyle = "#c98a12"; cx.font = `700 ${Math.round(TS * 0.3)}px Fredoka, sans-serif`;
+      cx.fillText("!", nx + TS * 0.3, by + 1);
+      cx.font = `${Math.round(TS * 0.8)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    });
+    // Coches (recortados a la carretera para que aparezcan y desaparezcan por los bordes)
+    cx.save();
+    cx.beginPath(); cx.rect(32 * TS - camX, 0, VW, VH); cx.clip();
+    cx.font = `${Math.round(TS * 0.9)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    CARS.forEach(c => {
+      const cxp = c.x * TS - camX + TS / 2, cyp = c.y * TS - camY + TS / 2;
+      if (cxp < -TS || cxp > VW + TS || cyp < -TS || cyp > VH + TS) return;
+      cx.save(); cx.translate(cxp, cyp); if (c.v > 0) cx.scale(-1, 1);
+      cx.fillText(c.e, 0, 0); cx.restore();
+    });
+    cx.restore();
+    cx.font = `${Math.round(TS * 0.8)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    const psx = P.px * TS - camX, psy = P.py * TS - camY;
+    // Mascota: va una casilla por detrás del personaje
+    const pet = curPet();
+    if (pet && (P.move || PET.x !== P.x || PET.y !== P.y)) {
+      const k = P.move ? Math.min(1, (t - P.move.t0) / STEP_MS) : 1;
+      const qx = (PET.fx + (PET.x - PET.fx) * k) * TS - camX + TS / 2, qy = (PET.fy + (PET.y - PET.fy) * k) * TS - camY + TS / 2;
+      cx.font = `${Math.round(TS * 0.62)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+      cx.fillText(pet.e, qx, qy + Math.sin(t / 160) * 2);
+      cx.font = `${Math.round(TS * 0.8)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+    }
+    const under = tile(Math.round(P.px), Math.round(P.py));
+    const sailing = SAIL.has(under);
+    if (sailing) drawBoatBack(psx, psy, t);
+    drawPlayer(psx, psy + (sailing ? TS * 0.08 : 0), P.dir, !!P.move && !sailing, t);
+    if (sailing) drawBoatFront(psx, psy, P.dir, !!P.move, t);
+    if (BLADE_ON[under]) blades(psx, psy, BLADE_ON[under], t, Math.round(P.px), Math.round(P.py), true);
+  }
+
+  let raf = null;
+  let lastFrame = 0;
+  function loop(now) {
+    raf = null;
+    updateCars(Math.min(0.05, (now - (lastFrame || now)) / 1000)); lastFrame = now;
+    if (screen !== "field") return;
+    if (P.move) {
+      const k = (now - P.move.t0) / STEP_MS;
+      if (k >= 1) {
+        P.x = P.px = P.move.tx; P.y = P.py = P.move.ty; P.move = null;
+        onStep();
+        if (screen !== "field" || raf === "stop") { raf = null; return; }
+      } else {
+        P.px = P.move.fx + (P.move.tx - P.move.fx) * k;
+        P.py = P.move.fy + (P.move.ty - P.move.fy) * k;
+      }
+    }
+    if (!P.move && held.length) tryMove(held[held.length - 1]);
+    draw(now);
+    raf = requestAnimationFrame(loop);
+  }
+  function startLoop() { if (!raf || raf === "stop") raf = requestAnimationFrame(loop); }
+  function stopLoop() { if (raf && raf !== "stop") cancelAnimationFrame(raf); raf = "stop"; }
+
+  /* ---------- Elección adaptativa de multiplicaciones ---------- */
+  function makePicker(tables, minB, only) {
+    const facts = only ? only.slice() : [];
+    if (!only) tables.forEach(a => { for (let b = minB; b <= 10; b++) facts.push(a + "x" + b); });
+    return {
+      retry: [], last: null,
+      next() {
+        this.retry.forEach(r => r.wait--);
+        const due = this.retry.findIndex(r => r.wait <= 0);
+        let k;
+        if (due >= 0) k = this.retry.splice(due, 1)[0].k;
+        else {
+          const pool = facts.length > 1 ? facts.filter(f => f !== this.last) : facts;
+          const w = pool.map(weight);
+          let r = Math.random() * w.reduce((a, b) => a + b, 0); k = pool[0];
+          for (let i = 0; i < pool.length; i++) { r -= w[i]; if (r <= 0) { k = pool[i]; break; } }
+        }
+        this.last = k; return k;
+      },
+      fail(k) { if (!this.retry.some(r => r.k === k)) this.retry.push({ k, wait: 2 }); }
+    };
+  }
+
+  function trick(a, b) {
+    const order = [1, 10, 2, 5, 9, 4, 3, 8, 6, 7];
+    const t = order.find(x => x === a || x === b);
+    const n = t === a ? b : a;
+    switch (t) {
+      case 1: return `Por 1 el número se queda igual: ${n}.`;
+      case 10: return `Por 10 solo tienes que poner un cero detrás: ${n} → ${n * 10}.`;
+      case 2: return `Por 2 es el doble: ${n} + ${n} = ${n * 2}.`;
+      case 5: return `Por 5 es la mitad de por 10: ${n * 10} dividido entre 2 = ${n * 5}.`;
+      case 9: return `Truco del 9: haz ${n} × 10 y quita ${n}. ${n * 10} − ${n} = ${n * 9}.`;
+      case 4: return `Por 4 es el doble del doble: ${n} → ${n * 2} → ${n * 4}.`;
+      case 3: return `Por 3 es el doble y uno más: ${n * 2} + ${n} = ${n * 3}.`;
+      case 8: return `Por 8 es doblar tres veces: ${n} → ${n * 2} → ${n * 4} → ${n * 8}.`;
+      case 6: return `Por 6 es por 5 y uno más: ${n * 5} + ${n} = ${n * 6}.`;
+      case 7: return `Por 7 es por 5 más por 2: ${n * 5} + ${n * 2} = ${n * 7}.`;
+    }
+  }
+  function fillReview(ul, keys) {
+    ul.innerHTML = "";
+    keys.forEach(k => {
+      const [a, b] = k.split("x").map(Number);
+      const li = document.createElement("li");
+      li.innerHTML = `<b>${a} × ${b} = ${a * b}</b>`;
+      li.appendChild(document.createTextNode(trick(a, b)));
+      ul.appendChild(li);
+    });
+  }
+
+  /* ---------- Cuestionario compartido (duelo y entrenamiento) ---------- */
+  let Q = null;
+  function later(fn, ms) { const q = Q; setTimeout(() => { if (Q === q && q) fn(); }, ms); }
+
+  function makePad(el) {
+    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "del", "0", "ok"].forEach(k => {
+      const b = document.createElement("button");
+      b.className = "key" + (k === "del" ? " del" : k === "ok" ? " go" : "");
+      b.textContent = k === "del" ? "Borrar" : k === "ok" ? "OK" : k;
+      b.onclick = () => press(k);
+      el.appendChild(b);
+    });
+  }
+  function press(k) {
+    if (!Q || Q.locked || screen !== Q.screen) return;
+    if (k === "ok") return check();
+    sfx.tap();
+    if (k === "del") Q.input = Q.input.slice(0, -1);
+    else if (Q.input.length < 3) Q.input += k;
+    Q.ansEl.textContent = Q.input;
+  }
+  function check() {
+    if (!Q.input) { say("Escribe un número primero."); return; }
+    Q.locked = true;
+    const [a, b] = Q.k.split("x").map(Number);
+    const ok = Number(Q.input) === (Q.missingNow ? b : a * b);
+    recordAnswer(Q.k, ok);
+    if (Q.mode === "battle") battleAnswer(ok, a, b); else trainAnswer(ok, a, b);
+  }
+  function askQ() {
+    // En la tabla seguida la pregunta es siempre la siguiente de la tabla (si fallas, se repite)
+    Q.k = Q.test === "seq" ? Q.seqTable + "x" + Q.seqB : Q.picker.next(); Q.input = ""; Q.locked = false;
+    const [a, b] = Q.k.split("x").map(Number);
+    // Nivel experto: la mitad de las veces falta un número ("7 × ? = 56")
+    Q.missingNow = !!Q.missing && Math.random() < 0.5;
+    Q.qEl.textContent = Q.missingNow ? `${a} × ? = ${a * b}` : a + " × " + b;
+    Q.qEl.classList.toggle("long", Q.missingNow);
+    Q.ansEl.className = "ans"; Q.ansEl.textContent = "";
+    if (Q.choice) renderChoices(a, b);
+  }
+
+  // Tres respuestas falsas creíbles: errores típicos de tabla vecina (7×7 o 6×8 en vez de 7×8), ±1 y ±10
+  function distractors(a, b) {
+    if (Q.missingNow) {
+      const c = [b - 1, b + 1, b - 2, b + 2, b + 3, b - 3].filter(x => x >= 1 && x <= 10 && x !== b);
+      return shuffle([...new Set(c)]).slice(0, 3);
+    }
+    const r = a * b;
+    const near = [a * (b + 1), a * (b - 1), (a + 1) * b, (a - 1) * b];
+    const far = [r + 1, r - 1, r + 10, r - 10, r + 2, Number(String(r).split("").reverse().join(""))];
+    const ok = (x) => x > 0 && x !== r;
+    const pickFrom = shuffle([...new Set(near.filter(ok))]).slice(0, 2);
+    for (const x of shuffle([...new Set([...near, ...far].filter(ok))])) { if (pickFrom.length >= 3) break; if (!pickFrom.includes(x)) pickFrom.push(x); }
+    return pickFrom;
+  }
+  function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+  function renderChoices(a, b) {
+    const right = Q.missingNow ? b : a * b;
+    const opts = shuffle([right, ...distractors(a, b)]);
+    const box = $("bChoices"); box.innerHTML = "";
+    opts.forEach((v, i) => {
+      const o = document.createElement("button");
+      o.className = "opt"; o.textContent = v; o.dataset.v = v;
+      o.setAttribute("aria-label", `Opción ${i + 1}: ${v}`);
+      o.onclick = () => {
+        if (!Q || Q.locked) return;
+        Q.input = String(v); Q.ansEl.textContent = v;
+        markChoices(right, v);
+        check();
+      };
+      box.appendChild(o);
+    });
+    const hint = (Q.perk && Q.perk.hint) || 0;
+    if (hint) [...box.querySelectorAll(".opt")].filter(o => Number(o.dataset.v) !== right).slice(0, hint).forEach(o => { o.disabled = true; o.classList.add("gone"); });
+  }
+  function markChoices(right, chosen) {
+    $("bChoices").querySelectorAll(".opt").forEach(o => {
+      const v = Number(o.dataset.v);
+      o.disabled = true;
+      if (v === right) o.classList.add("right");
+      else if (v === chosen) o.classList.add("wrong");
+    });
+  }
+
+  /* ---------- Cronómetro ---------- */
+  let timer = null;
+  function startTimer(secs, onEnd) {
+    stopTimer();
+    const t0 = performance.now(), total = secs * 1000, fill = $("timerFill");
+    let lastTick = Math.ceil(secs);
+    const frame = (now) => {
+      const left = Math.max(0, total - (now - t0)), frac = left / total;
+      fill.style.transform = `scaleX(${frac})`;
+      fill.className = "timer-fill" + (frac < 0.25 ? " panic" : frac < 0.5 ? " hurry" : "");
+      $("secs").textContent = (left / 1000).toFixed(1).replace(".", ",") + " s";
+      const whole = Math.ceil(left / 1000);
+      if (whole < lastTick) { lastTick = whole; if (whole > 0 && whole <= 3) sfx.tick(); }
+      if (left <= 0) { timer = null; return onEnd(); }
+      timer = requestAnimationFrame(frame);
+    };
+    timer = requestAnimationFrame(frame);
+  }
+  function stopTimer() { if (timer) cancelAnimationFrame(timer); timer = null; }
+
+  /* ---------- Regalos, objetos mágicos y vecinos ---------- */
+  const GIFTS = {
+    1: [["🍒", "cerezas"], ["🍓", "fresas"], ["🍊", "naranja"], ["🌻", "girasol"], ["🌷", "tulipán"], ["🐚", "caracola"], ["🍄", "seta"]],
+    2: [["🪁", "cometa"], ["🎈", "globo"], ["🧸", "osito de peluche"], ["🪴", "planta"], ["⚽", "balón"], ["🎣", "caña de pescar"], ["🪀", "yoyó"]],
+    3: [["🎸", "guitarra"], ["🔭", "telescopio"], ["🛶", "canoa"], ["🎠", "tiovivo"], ["🎨", "caballete de pintor"], ["🚲", "bici"], ["🛹", "monopatín"]],
+    4: [["👑", "corona"], ["💎", "diamante"], ["🏆", "copa de oro"], ["🚀", "cohete"], ["🏰", "castillo"], ["🌟", "estrella fugaz"], ["🦄", "unicornio de peluche"]]
+  };
+  const GIFT_LEVEL = { 1: "Regalos sencillos", 2: "Regalos chulos", 3: "Regalos geniales", 4: "Tesoros" };
+  const ITEMS = {
+    manzana: { e: "🍏", n: "Manzana dorada", d: "+1 manzana en un duelo" },
+    reloj: { e: "⏳", n: "Reloj de arena", d: "+3 segundos por pregunta en un duelo" },
+    red: { e: "🥅", n: "Red mágica", d: "2 aciertos menos para atrapar a un animal" }
+  };
+  S.gifts = S.gifts || {};
+  S.items = Object.assign({ manzana: 0, reloj: 0, red: 0 }, S.items || {});
+
+  // Cuanto más alto el nivel: tablas más difíciles, menos tiempo, más aciertos y mejor regalo
+  const RETOS = {
+    1: { name: "Fácil", tables: [2, 3, 4, 5, 10], minB: 1, time: 12, hits: 3, lives: 2 },
+    2: { name: "Medio", tables: [3, 4, 5, 6, 7, 8], minB: 2, time: 9, hits: 5, lives: 2 },
+    3: { name: "Difícil", tables: [6, 7, 8, 9], minB: 3, time: 7, hits: 6, lives: 2 },
+    4: { name: "Experto", tables: [6, 7, 8, 9], minB: 4, time: 7, hits: 8, lives: 2, missing: true }
+  };
+  const NPCS = [
+    { e: "🐹", name: "Lola", x: 6, y: 12, levels: [1, 2], hi: "¡Hola, vecino! Me encantan las frutas y las flores. Si superas uno de mis retos, te hago un regalo." },
+    { e: "🦙", name: "Rulo", x: 10, y: 19, levels: [1, 2, 3], hi: "¡Buenas! Estaba tomando el sol. ¿Te atreves con uno de mis retos? Cuanto más difícil, mejor regalo." },
+    { e: "🐨", name: "Kiko", x: 22, y: 4, levels: [2, 3], hi: "En el bosque solo juego con los valientes. Mis retos son duros, pero mis regalos son geniales." },
+    { e: "🐼", name: "Capitana Pina", x: 15, y: 25, boat: true, levels: [3, 4], hi: "¡Arrr! Guardo tesoros en mi barca para quien resuelva mis multiplicaciones más difíciles. En el reto Experto a veces falta un número: 7 × ? = 56." },
+    { e: "🦓", name: "Paca", x: 39, y: 12, levels: [1, 2, 3], hi: "¡Hola! Soy Paca, la guardiana del paso de cebra. Cruza siempre por aquí… ¡y supera mis retos!" },
+    { e: "🦡", name: "Tomás", x: 50, y: 3, levels: [3, 4], hi: "Brrr, qué frío hace aquí arriba. Solo los más valientes suben hasta la cima. ¿Te atreves con mis retos?" },
+    { e: "🦒", name: "Tina", x: 40, y: 20, levels: [2, 3, 4], hi: "¡Hola desde aquí arriba! Desde lo alto de la selva lo veo todo. Mis regalos son de los mejores." },
+    { e: "🦨", name: "Mofi", x: 50, y: 17, levels: [1, 2, 3], hi: "¡No te asustes, que no huelo mal! Bueno, un poco. ¿Hacemos un reto?" }
+  ];
+
+  /* ---------- Tipo de prueba, sorteado en cada duelo ----------
+     write: escribir el número · choice: elegir entre 4 (menos tiempo)
+     seq: tabla seguida de ×1 a ×10 eligiendo entre 4 (aún menos tiempo) */
+  const TESTS = {
+    write: { ico: "✏️", name: "Escribir el número", time: (t) => t },
+    choice: { ico: "🔘", name: "Elegir entre 4", time: (t) => Math.max(3, Math.round(t * 0.6)) },
+    seq: { ico: "🔢", name: "Tabla seguida", time: (t) => Math.max(3, Math.round(t * 0.45)) }
+  };
+  const rollTest = () => pick(Object.keys(TESTS));
+  // Para la tabla seguida se prefiere la tabla con más fallos pendientes
+  function pickSeqTable(tables) {
+    const w = tables.map(a => { let sum = 0; for (let b = 1; b <= 10; b++) sum += weight(a + "x" + b); return sum; });
+    let r = Math.random() * w.reduce((x, y) => x + y, 0);
+    for (let i = 0; i < tables.length; i++) { r -= w[i]; if (r <= 0) return tables[i]; }
+    return tables[0];
+  }
+  function testBanner(test, seqTable, time) {
+    const t = TESTS[test];
+    const desc = test === "write" ? "Escribe el resultado con el teclado."
+      : test === "choice" ? "Elige la respuesta buena entre 4. Hay menos tiempo."
+      : `Toda la tabla del ${seqTable} en orden, de ×1 a ×10, eligiendo entre 4. ¡Muy poco tiempo!`;
+    return `<span class="ico">${t.ico}</span><div><b>Prueba: ${t.name} · ${time} s</b><span>${desc}</span></div>`;
+  }
+
+  function openNpc(n) {
+    $("npcEmo").textContent = n.e;
+    $("npcName").textContent = n.name;
+    $("npcHi").textContent = n.hi;
+    renderNpcRetos(n);
+    let q = S.quests[n.name], thanks = "";
+    if (q && q.done) { S.coins += q.reward; thanks = ` ¡Gracias por cumplir mi encargo! Toma 🪙 ${q.reward} monedas.`; sfx.win(); q = null; renderTitle(); }
+    if (!q) { q = newQuest(); if (q) S.quests[n.name] = q; else delete S.quests[n.name]; }
+    save();
+    $("npcQuest").innerHTML = q
+      ? `<span class="ico">📜</span><div><b>Encargo: ${q.desc}</b><span>Recompensa: 🪙 ${q.reward} monedas. Cuando lo consigas, vuelve a hablar conmigo.</span></div>`
+      : `<span class="ico">📜</span><div><b>No tengo encargos</b><span>¡Ya has atrapado todo lo que buscaba!</span></div>`;
+    say(`${n.name}: ${thanks ? thanks.trim() : n.hi}`);
+    show("npc");
+  }
+  function renderNpcRetos(n) {
+    const box = $("npcRetos"); box.innerHTML = "";
+    n.rolled = {};
+    n.levels.forEach(L => {
+      const r = RETOS[L], b = document.createElement("button");
+      const test = rollTest(), seqTable = pickSeqTable(r.tables);
+      n.rolled[L] = { test, seqTable };
+      const hits = test === "seq" ? 10 : r.hits;
+      b.className = "reto l" + L;
+      const ts = r.tables.length > 3 ? `del ${r.tables[0]} al ${r.tables[r.tables.length - 1]}` : tablesText(r.tables);
+      b.innerHTML = `<span class="lv">${r.name}<small>${"★".repeat(L)}</small></span>
+        <b>${hits} aciertos · ${TESTS[test].time(r.time)} s por pregunta</b>
+        <span class="mode-tag">${TESTS[test].ico} ${TESTS[test].name}${test === "seq" ? " del " + seqTable : ""}</span>
+        <span>${test === "seq" ? "La tabla del " + seqTable + " entera, de ×1 a ×10" : "Tablas " + ts + (r.missing ? ", con números escondidos" : "")}. Tienes ${r.lives} manzanas: si pierdes las ${r.lives}, se acaba el reto.</span>
+        <span class="prize">${GIFTS[L].slice(0, 4).map(g => g[0]).join("")}…</span>`;
+      b.onclick = () => { sfx.tap(); startReto(n, L); };
+      box.appendChild(b);
+    });
+  }
+  $("npcBye").onclick = () => { sfx.tap(); goField(); say("¡Hasta luego! Vuelve cuando quieras otro regalo."); };
+
+  function startReto(n, L) {
+    const r = RETOS[L], { test, seqTable } = n.rolled[L];
+    const hits = test === "seq" ? 10 : r.hits;
+    startDuel({
+      e: n.e, title: `Reto de ${n.name}`, starsText: "★".repeat(L) + " " + r.name,
+      tables: r.tables, minB: r.minB, time: TESTS[test].time(r.time), test, seqTable, seqStart: 1,
+      hits, lives: r.lives, missing: !!r.missing && test !== "seq",
+      reto: { npc: n, level: L },
+      startMsg: `${n.name}: ¡Vamos allá! ${test === "seq" ? "Dime la tabla del " + seqTable + " entera, de ×1 a ×10." : "Consigue " + hits + " aciertos y el regalo es tuyo."} Tienes ${r.lives} manzanas: cada fallo te quita una.`
+    });
+  }
+
+  function giveGift(L) {
+    const pool = GIFTS[L].map((g, i) => L + "-" + i);
+    const fresh = pool.filter(k => !S.gifts[k]);
+    const key = pick(fresh.length ? fresh : pool);
+    S.gifts[key] = (S.gifts[key] || 0) + 1;
+    const r = Math.random();
+    let extra = null;
+    if (L === 2 && r < 0.35) extra = "manzana";
+    if (L === 3) extra = r < 0.35 ? "manzana" : r < 0.7 ? "reloj" : null;
+    if (L === 4) extra = r < 0.5 ? "red" : r < 0.8 ? "reloj" : "manzana";
+    if (extra) S.items[extra]++;
+    save();
+    const [e, n] = GIFTS[L][Number(key.split("-")[1])];
+    return { e, n, isNew: S.gifts[key] === 1, extra };
+  }
+
+  /* ---------- Casa ---------- */
+  function openCasa() {
+    const g = $("casaGrid"); g.innerHTML = "";
+    const head = (t) => Object.assign(document.createElement("h3"), { className: "mus-head", textContent: t });
+    const slot = (e, name, sub, has, detail) => {
+      const d = document.createElement("button");
+      d.className = "slot" + (has ? "" : " no");
+      d.innerHTML = `<span class="e">${e}</span><small>${has ? name : "???"}</small><span class="cnt">${sub}</span>`;
+      d.onclick = () => { $("casaDetail").textContent = detail; };
+      return d;
+    };
+    if (S.trophies.length) {
+      g.appendChild(head(`Trofeos · ${S.trophies.length}`));
+      S.trophies.forEach(([e, n]) => g.appendChild(slot(e, n, "", true, `${n}. ¡Un premio por tu colección de animales!`)));
+    }
+    g.appendChild(head("Objetos mágicos"));
+    Object.entries(ITEMS).forEach(([k, it]) => {
+      const n = S.items[k];
+      g.appendChild(slot(it.e, it.n, n ? "×" + n : "", n > 0, `${it.n}: ${it.d}. Se usa antes de empezar un duelo. Tienes ${n}.`));
+    });
+    let total = 0;
+    [1, 2, 3, 4].forEach(L => {
+      const got = GIFTS[L].filter((_, i) => S.gifts[L + "-" + i]).length;
+      total += got;
+      g.appendChild(head(`${"★".repeat(L)} ${GIFT_LEVEL[L]} · ${got}/${GIFTS[L].length}`));
+      GIFTS[L].forEach(([e, n], i) => {
+        const c = S.gifts[L + "-" + i] || 0;
+        const who = NPCS.filter(p => p.levels.includes(L)).map(p => p.name).join(" o ");
+        g.appendChild(slot(e, cap(n), c > 1 ? "×" + c : "", c > 0, c ? `${cap(n)}. Lo conseguiste en un reto ${RETOS[L].name.toLowerCase()}.` : `Regalo misterioso. Se consigue superando un reto ${RETOS[L].name.toLowerCase()} de ${who}.`));
+      });
+    });
+    $("casaCount").textContent = `Mi casa · ${total}/28 regalos`;
+    $("casaDetail").textContent = "Toca un objeto para ver qué es.";
+    say(total ? "¡Qué casa tan bonita! Los tesoros más valiosos solo los da la Capitana Pina, al final del muelle." : "Tu casa está vacía. Habla con los vecinos que tienen un «!» encima: si superas sus retos, te hacen regalos.");
+    show("casa");
+  }
+  $("toCasa").onclick = () => { sfx.tap(); openCasa(); };
+
+  /* ---------- Tienda de Rufo: se venden regalos por monedas y se compran objetos ---------- */
+  const GIFT_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8 };
+  const HATS = [
+    { e: "🧢", n: "Gorra", price: 3 }, { e: "👒", n: "Pamela", price: 5 },
+    { e: "🎩", n: "Chistera", price: 8 }, { e: "🎓", n: "Birrete de sabio", price: 12 },
+    { e: "🤠", n: "Sombrero de explorador", special: true }, { e: "🪖", n: "Casco de aventurero", special: true }, { e: "👑", n: "Corona de campeón", special: true }
+  ];
+  const SHOP_ITEMS = [{ k: "manzana", price: 2 }, { k: "reloj", price: 2 }, { k: "red", price: 5 }];
+  let armed = null;
+  function shopMsg(t) { $("shopMsg").textContent = t; }
+  function openShop() {
+    S.coins = S.coins || 0; S.hats = S.hats || []; armed = null;
+    renderShop();
+    shopMsg("¡Bienvenido! Tráeme tus regalos y te los cambio por monedas. Con las monedas puedes comprar objetos mágicos y sombreros.");
+    say("Rufo el canguro: ¡Guardo todo en mi bolsa! Cuanto mejor es el regalo, más monedas te doy.");
+    show("shop");
+  }
+  function renderShop() {
+    $("coins").textContent = `🪙 ${S.coins} ${S.coins === 1 ? "moneda" : "monedas"}`; renderTitle();
+    const list = $("buyList"); list.innerHTML = "";
+    const row = (e, name, desc, label, disabled, cls, onBuy) => {
+      const d = document.createElement("div"); d.className = "buy";
+      d.innerHTML = `<span class="e">${e}</span><div><b>${name}</b><span>${desc}</span></div>`;
+      const b = document.createElement("button"); b.textContent = label; b.disabled = disabled; if (cls) b.className = cls;
+      b.onclick = onBuy; d.appendChild(b); list.appendChild(d);
+    };
+    SHOP_ITEMS.forEach(({ k, price }) => {
+      const it = ITEMS[k];
+      row(it.e, it.n, `${it.d}. Tienes ${S.items[k]}.`, `🪙 ${price}`, S.coins < price, "", () => {
+        S.coins -= price; S.items[k]++; save(); sfx.ok(); renderShop();
+        shopMsg(`¡Aquí tienes: ${it.e} ${it.n}! Úsalo antes de un duelo con un animal.`);
+      });
+    });
+    HATS.forEach(h => {
+      const owned = S.hats.includes(h.e), worn = S.hat === h.e;
+      if (h.special && !owned) return;
+      row(h.e, h.n, owned ? (worn ? "Lo llevas puesto." : "Es tuyo. ¿Te lo pones?") : "Un sombrero para tu personaje.",
+        owned ? (worn ? "Quitármelo" : "Ponérmelo") : `🪙 ${h.price}`, !owned && S.coins < h.price, worn ? "worn" : "", () => {
+          if (!owned) { S.coins -= h.price; S.hats.push(h.e); S.hat = h.e; sfx.win(); shopMsg(`¡Qué bien te queda la ${h.n.toLowerCase()}! Mírate en el mapa.`); }
+          else { S.hat = worn ? null : h.e; sfx.tap(); shopMsg(worn ? "Te has quitado el sombrero." : `Te has puesto: ${h.n}.`); }
+          save(); renderShop();
+        });
+    });
+    const g = $("sellGrid"); g.innerHTML = "";
+    let any = false;
+    [1, 2, 3, 4].forEach(L => GIFTS[L].forEach(([e, n], i) => {
+      const key = L + "-" + i, c = S.gifts[key] || 0;
+      if (!c) return;
+      any = true;
+      const d = document.createElement("button");
+      d.className = "slot" + (armed === key ? " armed" : "");
+      d.innerHTML = `<span class="e">${e}</span><small>${cap(n)}${c > 1 ? " ×" + c : ""}</small><span class="cnt">🪙 ${GIFT_VALUE[L]}</span>`;
+      d.onclick = () => {
+        // El último de cada regalo pide confirmación porque desaparecería de tu casa
+        if (c === 1 && armed !== key) { armed = key; renderShop(); shopMsg(`¡Es tu única ${n}! Si la vendes, desaparece de tu casa. Toca otra vez para venderla.`); return; }
+        armed = null;
+        S.gifts[key] = c - 1; if (!S.gifts[key]) delete S.gifts[key];
+        S.coins += GIFT_VALUE[L]; save(); sfx.ok(); renderShop();
+        shopMsg(`Rufo guarda ${e} en su bolsa y te da ${GIFT_VALUE[L]} ${GIFT_VALUE[L] === 1 ? "moneda" : "monedas"}.`);
+      };
+      g.appendChild(d);
+    }));
+    if (!any) g.innerHTML = '<p class="lead" style="grid-column:1/-1">No tienes regalos para vender. ¡Supera retos de los vecinos para conseguirlos!</p>';
+  }
+
+  /* ---------- Progreso: mascotas, monedas, hitos, zonas, encargos y fichas ---------- */
+  S.coins = S.coins || 0; S.hats = S.hats || []; S.trophies = S.trophies || []; S.titles = S.titles || [];
+  S.milestones = S.milestones || []; S.quests = S.quests || {}; S.opened = S.opened || [];
+  if (S.pet != null && !S.caught.includes(S.pet)) S.pet = null;
+
+  // Ficha de cada animal: [sonido, dato curioso]
+  const FACTS = {
+    "sardina": ["¡Blup, blup!", "Nadan en bancos de miles de sardinas que se mueven como si fueran un solo pez."],
+    "pez tropical": ["¡Blup!", "Vive en los arrecifes de coral, donde sus colores le ayudan a esconderse."],
+    "pez globo": ["¡Puf!", "Se hincha tragando agua para parecer más grande y asustar a sus enemigos."],
+    "cangrejo": ["¡Clac, clac!", "Camina de lado y tiene 10 patas, contando sus dos pinzas."],
+    "gamba": ["¡Chof!", "Tiene 10 patas y, para escapar, nada hacia atrás dando coletazos."],
+    "pulpo": ["¡Blup!", "Tiene 3 corazones, sangre azul y 8 brazos."],
+    "calamar": ["¡Fsss!", "Tiene 8 brazos y 2 tentáculos, y suelta tinta para escapar."],
+    "medusa": ["…", "No tiene cerebro ni corazón, y es casi toda agua."],
+    "langosta": ["¡Clac!", "Puede vivir más de 50 años y cambia de caparazón para crecer."],
+    "tortuga marina": ["¡Fuuu!", "Las hembras vuelven a poner sus huevos en la playa donde nacieron."],
+    "tiburón": ["¡Ñam!", "Le salen dientes nuevos toda la vida: ¡puede gastar miles!"],
+    "ballena": ["¡Uuuuooo!", "La ballena azul es el animal más grande que ha existido en la Tierra."],
+    "mariposa": ["…", "Prueba el sabor de las flores con las patas."],
+    "mariquita": ["…", "Sus puntos avisan a los pájaros de que sabe fatal."],
+    "abeja": ["¡Bzzz!", "Baila para contar a sus compañeras dónde hay flores."],
+    "grillo": ["¡Cri, cri!", "Canta frotando las alas y tiene los oídos en las patas delanteras."],
+    "oruga": ["…", "Se convierte en mariposa o en polilla dentro de una crisálida."],
+    "caracol": ["…", "Lleva su casa a cuestas y tiene miles de dientecitos diminutos."],
+    "escarabajo": ["¡Crrr!", "Hay más tipos de escarabajos que de cualquier otro animal."],
+    "hormiga": ["…", "Puede levantar muchas veces su propio peso."],
+    "araña": ["…", "Su seda es, para lo fina que es, más resistente que el acero."],
+    "escorpión": ["¡Tsss!", "Brilla de color azul verdoso con luz ultravioleta."],
+    "rana": ["¡Croac!", "Bebe agua a través de la piel, no por la boca."],
+    "lagartija": ["¡Tsss!", "Puede soltar la cola para escapar, y después le vuelve a crecer."],
+    "conejo": ["¡Fff, fff!", "Sus dientes no paran de crecer en toda su vida."],
+    "ratón": ["¡Iii, iii!", "Se comunica con chillidos tan agudos que nosotros no podemos oírlos."],
+    "erizo": ["¡Fuf, fuf!", "Tiene unas 5.000 púas y se hace una bola para protegerse."],
+    "mapache": ["¡Chirr!", "Toca la comida con sus patas, que son muy sensibles, como si la lavara."],
+    "ardilla": ["¡Chic, chic!", "Entierra bellotas y se olvida de algunas: ¡así planta árboles sin querer!"],
+    "zorro": ["¡Kek, kek!", "Oye a un ratón moverse bajo la nieve y salta para atraparlo."],
+    "ciervo": ["¡Ooouu!", "A los machos se les caen los cuernos cada año y les vuelven a crecer."],
+    "jabalí": ["¡Gruñ, gruñ!", "Tiene un olfato buenísimo para encontrar comida bajo tierra."],
+    "murciélago": ["¡Iii!", "Es el único mamífero que vuela de verdad, y se orienta con ecos."],
+    "oso": ["¡Grrrr!", "Puede pasar casi todo el invierno durmiendo sin comer."],
+    "foca": ["¡Arf, arf!", "Puede aguantar la respiración bajo el agua muchos minutos."],
+    "delfín": ["¡Clic, clic!", "Duerme con medio cerebro despierto para no olvidarse de respirar."],
+    "gorrión": ["¡Pío, pío!", "Vive cerca de las personas en casi todas las ciudades del mundo."],
+    "paloma": ["¡Ruu, ruu!", "Sabe volver a casa aunque la suelten muy lejos."],
+    "gallo": ["¡Quiquiriquí!", "Canta al amanecer, pero también a otras horas del día."],
+    "pavo real": ["¡Léon, léon!", "Abre su cola llena de «ojos» para presumir."],
+    "águila": ["¡Iiiiaa!", "Ve muchísimo mejor que nosotros: distingue un conejo desde muy alto."],
+    "loro": ["¡Hola, hola!", "Algunos aprenden a repetir muchísimas palabras."],
+    "búho": ["¡Uh, uh!", "Puede girar la cabeza tanto que casi mira hacia atrás."],
+    "pato": ["¡Cuac, cuac!", "Sus plumas tienen una grasa que las hace impermeables."],
+    "flamenco": ["¡Onk!", "Es rosa por los camarones y las algas que come."],
+    "cisne": ["¡Jonk!", "Muchas parejas de cisnes se quedan juntas toda la vida."],
+    "dodo": ["¡Doo-doo!", "Vivía en la isla Mauricio y desapareció hace más de 300 años."],
+    "pingüino": ["¡Áaa, áaa!", "No puede volar, pero nada rapidísimo usando las alas como aletas."],
+    "mono": ["¡Uh-uh, ah-ah!", "Muchos monos usan la cola como una mano más para agarrarse a las ramas."],
+    "perezoso": ["…", "Se mueve tan despacio que le crecen algas en el pelo."],
+    "orangután": ["¡Uuuh!", "Su nombre significa «persona del bosque» en malayo."],
+    "elefante": ["¡Pruuuu!", "Usa la trompa para beber, oler, coger cosas y saludar."],
+    "leopardo": ["¡Grrr!", "Sube su comida a los árboles para que nadie se la quite."],
+    "tigre": ["¡Grrraaau!", "No hay dos tigres con las mismas rayas."],
+    "gorila": ["¡Uh, uh, uh!", "Se parece mucho a nosotros: compartimos casi todo nuestro ADN."],
+    "mosquito": ["¡Zzziii!", "Solo pican las hembras; los machos beben el néctar de las flores."],
+    "mosca": ["¡Bzzz!", "Sus enormes ojos le dejan ver casi en todas direcciones."],
+    "castor": ["¡Chap!", "Construye presas con ramas y barro, y tiene los dientes naranjas."],
+    "serpiente": ["¡Sssss!", "No tiene párpados y huele sacando la lengua."],
+    "cocodrilo": ["¡Grrr!", "Lleva a sus crías en la boca con muchísimo cuidado."],
+    "hipopótamo": ["¡Jo, jo, jo!", "Su sudor es rojizo y le protege del sol."],
+    "perro": ["¡Guau, guau!", "Su olfato es miles de veces mejor que el nuestro."],
+    "oveja": ["¡Beee!", "Reconoce las caras de otras ovejas y de las personas."],
+    "gato": ["¡Miau!", "Pasa más de la mitad del día durmiendo."],
+    "vaca": ["¡Muuu!", "Su estómago tiene 4 partes para poder digerir la hierba."],
+    "cerdo": ["¡Oinc, oinc!", "Es muy listo y se revuelca en el barro para refrescarse."],
+    "rata": ["¡Iii!", "Se ríe cuando le hacen cosquillas, aunque nosotros no lo oímos."],
+    "caballo": ["¡Hiiiii!", "Puede dormir de pie."],
+    "liebre": ["…", "Nace ya con pelo y con los ojos abiertos, a diferencia del conejo."],
+    "cabra": ["¡Meee!", "Trepa por rocas casi verticales sin caerse."],
+    "carnero": ["¡Beee!", "Sus cuernos enrollados no se le caen y crecen toda la vida."],
+    "bisonte": ["¡Brrruuu!", "Es el animal terrestre más pesado de Europa y de América del Norte."],
+    "lobo": ["¡Auuuuu!", "Vive en manada y aúlla para hablar con su familia."],
+    "mamut": ["¡Pruuuu!", "Era pariente de los elefantes y estaba cubierto de pelo largo."]
+  };
+  function speak(text) {
+    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "es-ES"; u.rate = 0.95; speechSynthesis.speak(u); } catch (e) {}
+  }
+
+  // 1. Mascotas: cada animal atrapado puede acompañarte y darte una ventaja en los duelos
+  const PERK_BY_NAME = {
+    "caracol": { time: 3 }, "perezoso": { time: 4 }, "tortuga marina": { time: 3 },
+    "pulpo": { forgive: 8 }, "araña": { forgive: 8 }, "abeja": { forgive: 6 }, "vaca": { forgive: 4 },
+    "cangrejo": { forgive: 10 }, "murciélago": { forgive: 9 },
+    "leopardo": { hint: 1 }, "lagartija": { hint: 1 }, "águila": { hint: 1 }, "búho": { hint: 2 },
+    "elefante": { life: 1 }, "perro": { shield: 1 }, "mapache": { coins: 2 }, "rata": { coins: 2 }
+  };
+  const PERK_BY_TIER = { 1: { time: 1 }, 2: { time: 2 }, 3: { hits: 1 }, 4: { shield: 1 }, 5: { life: 1, time: 2 } };
+  const perkOf = (c) => PERK_BY_NAME[c.n] || PERK_BY_TIER[c.tier];
+  function perkText(pk) {
+    const t = [];
+    if (pk.time) t.push(`+${pk.time} s por pregunta`);
+    if (pk.life) t.push("+1 manzana");
+    if (pk.hits) t.push("1 acierto menos para atrapar animales");
+    if (pk.shield) t.push("perdona tu primer fallo en cada duelo");
+    if (pk.forgive) t.push(`perdona tu primer fallo en la tabla del ${pk.forgive}`);
+    if (pk.hint) t.push(`quita ${pk.hint === 1 ? "una respuesta falsa" : pk.hint + " respuestas falsas"} cuando hay que elegir`);
+    if (pk.coins) t.push(`+${pk.coins} monedas por captura`);
+    return t.join(" y ");
+  }
+  const curPet = () => (S.pet != null && S.caught.includes(S.pet)) ? CR[S.pet] : null;
+  const curPerk = () => { const pt = curPet(); return pt ? perkOf(pt) : {}; };
+  function petAdjust(cfg) {
+    const pet = curPet(); if (!pet) return cfg;
+    const pk = perkOf(pet);
+    return Object.assign({}, cfg, {
+      pet, perk: pk, time: cfg.time + (pk.time || 0), lives: cfg.lives + (pk.life || 0),
+      hits: !cfg.reto && cfg.test !== "seq" ? Math.max(1, cfg.hits - (pk.hits || 0)) : cfg.hits
+    });
+  }
+  const PET = { x: P.x, y: P.y, fx: P.x, fy: P.y };
+
+  // 4. Zonas que se abren al tener suficientes animales en el museo
+  const UNLOCK = { carretera: 5, mar: 8, montana: 15, selva: 22, pantano: 30 };
+  // Quien ya había entrado en una zona o atrapado algo de ella no la pierde
+  S.caught.forEach(i => { const z = CR[i].zone; if (UNLOCK[z] && !S.opened.includes(z)) S.opened.push(z); });
+  if (S.sailed && !S.opened.includes("mar")) S.opened.push("mar");
+  { const z0 = zoneAt(P.x, P.y); if (UNLOCK[z0] && !S.opened.includes(z0)) S.opened.push(z0); }
+  const zoneOpen = (z) => !UNLOCK[z] || S.caught.length >= UNLOCK[z] || S.opened.includes(z);
+  const lockMsg = (z) => z === "mar"
+    ? `La barca está amarrada. Necesitas ${UNLOCK.mar} animales en el museo para navegar (tienes ${S.caught.length}).`
+    : `🚧 ${ZONES[z].name} está cerrada. Necesitas ${UNLOCK[z]} animales en el museo para entrar (tienes ${S.caught.length}).`;
+  // Casillas de entrada a cada zona cerrada (solo los bordes que dan a zonas que se abren antes), donde se dibuja la valla
+  const GATES = [];
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const z = zoneAt(x, y);
+    if (!UNLOCK[z] || z === "mar" || !WALK.has(G[y][x])) continue;
+    if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => WALK.has(tile(x + dx, y + dy)) && (UNLOCK[zoneAt(x + dx, y + dy)] || 0) < UNLOCK[z])) GATES.push([x, y, z]);
+  }
+
+  // 2 y 3. Monedas por captura y premios por hitos
+  const COIN_TIER = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 10 };
+  const MILESTONES = [
+    { n: 5, coins: 5 }, { n: 10, hat: "🤠", hatName: "Sombrero de explorador" }, { n: 15, coins: 10 },
+    { n: 25, hat: "🪖", hatName: "Casco de aventurero" }, { n: 35, coins: 15 },
+    { n: 50, hat: "👑", hatName: "Corona de campeón" }, { n: 60, coins: 25 },
+    { n: CR.length, coins: 50, trophy: ["🏆", "Copa de Leyenda de la isla"], title: "Leyenda de la isla" }
+  ];
+  const KIND_ONE = { bicho: "un bicho", mar: "una criatura del mar", reptil: "un reptil", mamifero: "un mamífero", ave: "un ave" };
+  function renderTitle() {
+    $("coinChip").textContent = "🪙 " + S.coins;
+    $("titleChip").hidden = !S.title; $("titleChip").textContent = S.title ? "⭐ " + S.title : "";
+  }
+  function onCapture(idx) {
+    const c = CR[idx], out = [], n = S.caught.length;
+    const coins = COIN_TIER[c.tier] + (curPerk().coins || 0);
+    S.coins += coins; out.push(`🪙 +${coins} ${coins === 1 ? "moneda" : "monedas"} para la tienda de Rufo.`);
+    MILESTONES.forEach(m => {
+      if (n < m.n || S.milestones.includes(m.n)) return;
+      S.milestones.push(m.n);
+      if (m.coins) { S.coins += m.coins; out.push(`🎉 ¡${m.n} animales en el museo! Premio: 🪙 ${m.coins} monedas.`); }
+      if (m.hat) { if (!S.hats.includes(m.hat)) S.hats.push(m.hat); out.push(`🎉 ¡${m.n} animales en el museo! Premio: ${m.hat} ${m.hatName}. Póntelo en la tienda de Rufo.`); }
+      if (m.trophy) S.trophies.push(m.trophy);
+      if (m.title) { S.titles.push(m.title); S.title = m.title; out.push(`🏆 ¡Has completado el museo entero! Nuevo título: «${m.title}».`); }
+    });
+    const medal = "Medalla de " + ZONES[c.zone].name;
+    if (!missingIn(c.zone).length && !S.trophies.some(t => t[1] === medal)) {
+      S.trophies.push(["🏅", medal]); S.coins += 10;
+      out.push(`🏅 ¡Has completado ${ZONES[c.zone].name}! Medalla para tu casa y 🪙 10 monedas.`);
+    }
+    const ids = CR.map((x, i) => i).filter(i => CR[i].kind === c.kind);
+    const title = "Experto en " + KINDS[c.kind].toLowerCase();
+    if (ids.every(i => S.caught.includes(i)) && !S.titles.includes(title)) {
+      S.titles.push(title); S.title = title; S.trophies.push(["🎖️", title]); S.coins += 15;
+      out.push(`🎖️ ¡Tienes todos los ${KINDS[c.kind].toLowerCase()}! Nuevo título: «${title}» y 🪙 15 monedas.`);
+    }
+    Object.entries(UNLOCK).forEach(([z, req]) => {
+      if (n === req && !S.opened.includes(z)) out.push(`🔓 ¡Se ha abierto ${ZONES[z].name}!${z === "mar" ? " Ya puedes subirte a la barca." : ""}`);
+    });
+    NPCS.forEach(pn => {
+      const q = S.quests[pn.name];
+      if (q && !q.done && questMatch(q, c)) { q.done = true; out.push(`📜 ¡Encargo de ${pn.name} cumplido! Habla con ${pn.e} ${pn.name} para cobrar la recompensa.`); }
+    });
+    renderTitle();
+    return out;
+  }
+
+  // 5. Encargos de los vecinos
+  function questMatch(q, c) { return q.type === "zone" ? c.zone === q.v : q.type === "kind" ? c.kind === q.v : c.tier >= q.v; }
+  function newQuest() {
+    const open = CR.map((c, i) => i).filter(i => !S.caught.includes(i) && zoneOpen(CR[i].zone));
+    const opts = [];
+    Object.keys(ZONES).forEach(z => { if (z !== "mar" && open.some(i => CR[i].zone === z)) opts.push({ type: "zone", v: z, desc: `Atrapa un animal de ${ZONES[z].name}` }); });
+    Object.keys(KINDS).forEach(k => { if (open.some(i => CR[i].kind === k)) opts.push({ type: "kind", v: k, desc: `Atrapa ${KIND_ONE[k]} que no tengas` }); });
+    if (open.some(i => CR[i].tier >= 3)) opts.push({ type: "tier", v: 3, desc: "Atrapa un animal raro (★★★ o más)" });
+    if (!opts.length) return null;
+    const q = pick(opts);
+    q.reward = 5 + Math.floor(Math.random() * 6) + (q.type === "tier" ? 5 : 0); q.done = false;
+    return q;
+  }
+
+  // 6. Fichas del museo
+  function renderFicha(i, scroll) {
+    const c = CR[i], has = S.caught.includes(i), seen = S.seen.includes(i), f = $("musFicha");
+    if (!has) {
+      f.innerHTML = `<p class="mus-detail">${seen ? cap(c.n) + ": lo has visto pero se escapó." : "Animal misterioso."} Vive en ${ZONES[c.zone].name}${zoneOpen(c.zone) ? "" : " (zona todavía cerrada)"}.</p>`;
+    } else {
+      const [voz, dato] = FACTS[c.n] || ["…", ""];
+      const isPet = S.pet === i;
+      f.innerHTML = `<div class="ficha-top"><span class="ficha-emo">${c.e}</span><div><b>${cap(c.n)}</b><span class="stars">${stars(c.tier)}</span> <span class="ficha-sub">${TIERS[c.tier].name} · ${ZONES[c.zone].name}</span></div></div>
+        <p class="ficha-voz">${voz}</p>
+        <p>💡 ${dato}</p>
+        <p>🧮 ${c.tables.length === 1 ? "Tabla" : "Tablas"} ${tablesText(c.tables)} · ${c.time} s · ${c.hits} aciertos</p>
+        <p class="ficha-perk">🐾 Como mascota: ${perkText(perkOf(c))}.</p>
+        <div class="row2"><button class="big alt" id="fSpeak">🔊 Escuchar</button><button class="big${isPet ? "" : " red"}" id="fPet">${isPet ? "Dejar de ser mascota" : "Elegir de mascota"}</button></div>`;
+      $("fSpeak").hidden = !("speechSynthesis" in window);
+      $("fSpeak").onclick = () => speak(`${cap(c.n)}. ${voz === "…" ? "" : voz + "."} ${dato}`);
+      $("fPet").onclick = () => {
+        S.pet = isPet ? null : i; save(); sfx.ok(); renderMuseum(); renderFicha(i);
+        say(isPet ? "Tu mascota se queda descansando en el museo." : `¡${cap(c.n)} es tu mascota! Te seguirá por el mapa y te ayudará: ${perkText(perkOf(c))}.`);
+      };
+    }
+    if (scroll) f.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  /* ---------- Encuentro con animales ---------- */
+  let foe = null;
+  const useItems = new Set();
+  let foeTest = "write", foeSeq = 2;
+  function showIntro(idx) {
+    foe = idx; const c = CR[idx];
+    foeTest = rollTest(); foeSeq = pickSeqTable(c.tables);
+    if (!S.seen.includes(idx)) { S.seen.push(idx); save(); }
+    $("inEmo").textContent = c.e;
+    $("inTitle").textContent = `¡Te has encontrado ${art(c)}!`;
+    $("inNote").textContent = c.note || "¡Todavía no lo tienes en el museo!";
+    $("inRare").innerHTML = `<span class="stars">${stars(c.tier)}</span><br>${TIERS[c.tier].name}`;
+    $("inTables").textContent = (c.tables.length === 1 ? "Tabla " : "Tablas ") + tablesText(c.tables);
+    useItems.clear(); renderIntro();
+    say(`${cap(art(c))} quiere batirse en duelo. Tienes 3 manzanas: si fallas o se acaba el tiempo, pierdes una.`);
+    show("intro");
+    $("inFight").focus();
+  }
+  function renderIntro() {
+    const c = CR[foe];
+    const pet = curPet(), pk = curPerk();
+    const time = TESTS[foeTest].time(c.time) + (useItems.has("reloj") ? 3 : 0) + (pk.time || 0);
+    const hits = Math.max(1, (foeTest === "seq" ? 10 : c.hits) - (useItems.has("red") ? 2 : 0) - (foeTest === "seq" ? 0 : pk.hits || 0));
+    $("inPet").textContent = pet ? `${pet.e} Tu mascota te ayuda: ${perkText(pk)}.` : "Consejo: elige una mascota en el museo y te ayudará en los duelos.";
+    $("inMode").innerHTML = testBanner(foeTest, foeSeq, time);
+    $("inTables").textContent = foeTest === "seq" ? "Tabla del " + foeSeq + " entera" : (c.tables.length === 1 ? "Tabla " : "Tablas ") + tablesText(c.tables);
+    $("inTime").textContent = time + " s por pregunta";
+    $("inHits").textContent = hits + (hits === 1 ? " acierto" : " aciertos");
+    const box = $("inItems"); box.innerHTML = "";
+    const have = Object.keys(ITEMS).filter(k => S.items[k] > 0);
+    box.hidden = !have.length;
+    if (!have.length) return;
+    box.appendChild(Object.assign(document.createElement("p"), { className: "label", textContent: "¿Usas algún objeto mágico?" }));
+    have.forEach(k => {
+      const b = document.createElement("button");
+      b.className = "use"; b.setAttribute("aria-pressed", useItems.has(k));
+      b.textContent = `${ITEMS[k].e} ${ITEMS[k].n} (${S.items[k]})`;
+      b.title = ITEMS[k].d;
+      b.onclick = () => { useItems.has(k) ? useItems.delete(k) : useItems.add(k); sfx.tap(); renderIntro(); say(ITEMS[k].n + ": " + ITEMS[k].d + "."); };
+      box.appendChild(b);
+    });
+  }
+  $("inFight").onclick = () => { sfx.tap(); startBattle(foe); };
+  $("inFlee").onclick = () => { sfx.flee(); P.cool = 2; goField(); say("Has salido corriendo. ¡Ya habrá otra ocasión!"); };
+
+  function startBattle(idx) {
+    const c = CR[idx];
+    useItems.forEach(k => { S.items[k] = Math.max(0, S.items[k] - 1); });
+    save();
+    startDuel({
+      e: c.e, title: cap(c.n), starsText: stars(c.tier), c, idx,
+      tables: c.tables, minB: c.minB,
+      time: TESTS[foeTest].time(c.time) + (useItems.has("reloj") ? 3 : 0),
+      test: foeTest, seqTable: foeSeq, seqStart: 1 + (foeTest === "seq" && useItems.has("red") ? 2 : 0),
+      hits: Math.max(1, (foeTest === "seq" ? 10 : c.hits) - (useItems.has("red") ? 2 : 0)),
+      lives: 3 + (useItems.has("manzana") ? 1 : 0),
+      startMsg: foeTest === "seq" ? `¡Tabla del ${foeSeq} seguida! Elige rápido cada resultado, de ×1 a ×10.` : "¡Empieza el duelo! Contesta antes de que se vacíe la barra."
+    });
+  }
+
+  /* ---------- Duelo (animales y retos de vecinos) ---------- */
+  function startDuel(cfg) {
+    cfg = petAdjust(cfg);
+    Q = Object.assign({ mode: "battle", screen: "battle", missed: [], input: "", locked: true }, cfg, {
+      hp: cfg.hits, maxLives: cfg.lives, picker: makePicker(cfg.tables, cfg.minB), ansEl: $("bAns"), qEl: $("bQ"),
+      choice: cfg.test !== "write", seqB: cfg.seqStart || 1
+    });
+    $("foeName").textContent = cfg.title;
+    $("foeStars").textContent = cfg.starsText;
+    $("foeEmo").textContent = cfg.e; $("foeEmo").className = "foe";
+    $("bPad").hidden = !!Q.choice; $("bChoices").hidden = !Q.choice;
+    $("petTag").hidden = !Q.pet; $("petTag").textContent = Q.pet ? Q.pet.e : ""; $("petTag").title = Q.pet ? "Tu mascota te ayuda" : "";
+    renderHP(); renderLives();
+    show("battle");
+    say(cfg.startMsg);
+    nextBattleQ();
+  }
+  function renderHP() {
+    $("hp").innerHTML = Array.from({ length: Q.hits }, (_, i) => `<i class="${i < Q.hp ? "" : "gone"}"></i>`).join("");
+    $("hpText").textContent = Q.test === "seq" ? `Tabla del ${Q.seqTable}: vas por el ×${Math.min(10, Q.seqB)}`
+      : Q.hp === 1 ? "¡Solo 1 acierto más!" : `Faltan ${Q.hp} aciertos ${Q.reto ? "para el regalo" : "para atraparlo"}`;
+  }
+  function renderLives() {
+    $("lives").innerHTML = Array.from({ length: Q.maxLives }, (_, i) => `<span class="${i < Q.lives ? "" : "lost"}">🍎</span>`).join("");
+    $("lives").setAttribute("aria-label", `Te quedan ${Q.lives} manzanas`);
+  }
+  function nextBattleQ() { askQ(); startTimer(Q.time, battleTimeout); }
+  function battleAnswer(ok, a, b) {
+    stopTimer();
+    if (!ok) return battleMiss(a, b, "¡Uy!");
+    Q.hp--; if (Q.test === "seq") Q.seqB++;
+    renderHP();
+    Q.ansEl.className = "ans ok"; sfx.hit();
+    const f = $("foeEmo"); f.className = "foe"; void f.offsetWidth; f.className = "foe hit";
+    say(pick(PRAISE));
+    if (Q.hp <= 0) later(battleWin, 700); else later(nextBattleQ, 550);
+  }
+  function battleTimeout() {
+    if (!Q || Q.locked) return;
+    Q.locked = true;
+    const [a, b] = Q.k.split("x").map(Number);
+    recordAnswer(Q.k, false);
+    battleMiss(a, b, "¡Se acabó el tiempo!");
+  }
+  function battleMiss(a, b, why) {
+    // La mascota puede perdonar un fallo por duelo
+    const forgive = Q.perk && !Q.perkUsed && (Q.perk.shield || (Q.perk.forgive && (a === Q.perk.forgive || b === Q.perk.forgive)));
+    if (forgive) Q.perkUsed = true; else Q.lives--;
+    renderLives();
+    if (!Q.missed.includes(Q.k)) Q.missed.push(Q.k);
+    Q.picker.fail(Q.k);
+    Q.ansEl.className = "ans bad"; Q.ansEl.textContent = Q.missingNow ? b : a * b; sfx.bad();
+    if (Q.choice) markChoices(Q.missingNow ? b : a * b, null);
+    const card = $("battle"); card.classList.remove("hurt"); void card.offsetWidth; card.classList.add("hurt");
+    const left = Q.lives === 1 ? "Te queda 1 manzana." : `Te quedan ${Q.lives} manzanas.`;
+    say(forgive ? `¡${cap(Q.pet.n)} te protege! Este fallo no cuenta. ${a} × ${b} = ${a * b}.` : `${why} ${a} × ${b} = ${a * b}.` + (Q.lives > 0 ? " " + left : ""));
+    if (Q.lives <= 0) later(battleLose, 1600); else later(nextBattleQ, 1700);
+  }
+  $("bFlee").onclick = () => {
+    const q = Q; stopTimer(); sfx.flee(); P.cool = 2; goField();
+    say(q && q.reto ? `${q.reto.npc.name}: ¡Vale, lo dejamos para otro día!` : `Has huido del duelo. ${cap(art(q ? q.c : CR[foe]))} sigue por aquí…`);
+  };
+
+  function showResult(q, emo, title, text, nutri) {
+    $("resEmo").textContent = emo;
+    $("resTitle").textContent = title;
+    $("resText").innerHTML = text;
+    $("resReviewBox").hidden = !q.missed.length;
+    fillReview($("resReview"), q.missed);
+    say(nutri);
+    P.cool = 3; show("result"); $("resOk").focus();
+  }
+  function battleWin() {
+    const q = Q; stopTimer(); Q = null;
+    sfx.win();
+    if (q.reto) {
+      const g = giveGift(q.reto.level);
+      const extra = g.extra ? ` ¡Y además te da un objeto mágico: ${ITEMS[g.extra].e} ${ITEMS[g.extra].n}! (${ITEMS[g.extra].d})` : "";
+      return showResult(q, g.e, `${q.reto.npc.name} te regala: ${g.n}`,
+        (g.isNew ? `<span class="gift-new">¡Nuevo!</span> ` : "Ya tenías uno, ¡ahora tienes más! ") + `Lo tienes guardado en tu casa.${extra}`,
+        q.reto.level >= 3 ? "¡Guau! Has superado un reto muy difícil. ¡Qué pasada de regalo!" : "¡Reto superado! Prueba uno más difícil para conseguir regalos mejores.");
+    }
+    const isNew = !S.caught.includes(q.idx);
+    if (isNew) S.caught.push(q.idx);
+    const rewards = isNew ? onCapture(q.idx) : [];
+    save();
+    showResult(q, q.c.e, `¡Has atrapado ${art(q.c)}!`,
+      (isNew ? `¡Nuevo para el museo! Ya tienes ${S.caught.length} de ${CR.length}. Mira su ficha en el museo: ¡puede ser tu mascota!` : "Ya tenías uno, ¡pero ganar el duelo te ha hecho más fuerte!")
+        + (rewards.length ? `<ul class="rewards">${rewards.map(r => `<li>${r}</li>`).join("")}</ul>` : ""),
+      S.caught.length === CR.length && isNew ? "¡¡Has completado el museo entero!! ¡Eres la leyenda de la isla!" : pick(["¡Qué duelo tan bueno!", "¡Increíble! Se nota que practicas.", "¡Lo has clavado!"]));
+  }
+  function battleLose() {
+    const q = Q; stopTimer(); Q = null;
+    if (q.reto) {
+      return showResult(q, q.reto.npc.e, "¡Casi lo consigues!",
+        `${q.reto.npc.name} dice: «Te faltaron ${q.hp} ${q.hp === 1 ? "acierto" : "aciertos"}. Vuelve a intentarlo cuando quieras, ¡el regalo te espera!»`,
+        "Repasa las que fallaste y vuelve a hablar con el vecino. ¡Seguro que la próxima vez lo superas!");
+    }
+    const run = (q.c.kind === "ave" || q.c.flies) && !q.c.swims ? "volando" : q.c.kind === "mar" || q.c.swims ? "nadando" : q.c.kind === "reptil" ? "reptando" : "corriendo";
+    showResult(q, q.c.e, `${cap(art(q.c))} se ha escapado ${run}`,
+      `Te faltaron ${q.hp} ${q.hp === 1 ? "acierto" : "aciertos"}. Repasa estas y vuelve a buscarlo, ¡seguro que lo encuentras otra vez!`,
+      "¡No pasa nada! Cada duelo te hace más rápido. Si quieres, entrenamos juntos sin prisa.");
+  }
+  $("resOk").onclick = () => { sfx.tap(); goField(); };
+
+  /* ---------- Entrenamiento tranquilo ---------- */
+  function renderTrain() {
+    const weak = weakest(12), wl = $("weakList");
+    wl.innerHTML = weak.length
+      ? weak.map(k => { const [a, b] = k.split("x"); return `<span>${a} × ${b}</span>`; }).join("")
+      : "<p>¡Ahora mismo no tienes fallos pendientes! Las que falles aparecerán aquí.</p>";
+    $("trainWeak").hidden = !weak.length;
+    const box = $("chips"); box.innerHTML = "";
+    for (let n = 1; n <= 10; n++) {
+      const b = document.createElement("button");
+      b.className = "chip"; b.textContent = n; b.id = "chip" + n;
+      b.setAttribute("aria-pressed", S.tables.includes(n));
+      b.setAttribute("aria-label", "Tabla del " + n);
+      b.onclick = () => {
+        if (S.tables.includes(n)) { if (S.tables.length > 1) S.tables = S.tables.filter(x => x !== n); }
+        else S.tables = [...S.tables, n].sort((a, b) => a - b);
+        save(); sfx.tap(); renderTrain();
+      };
+      box.appendChild(b);
+    }
+  }
+  document.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { S.tables = b.dataset.set.split(",").map(Number); save(); sfx.tap(); renderTrain(); });
+  $("toTrain").onclick = () => { sfx.tap(); renderTrain(); show("train"); say("¡Vamos a entrenar! Elige las tablas que quieras practicar."); };
+
+  function startTraining(weakOnly) {
+    const only = weakOnly ? weakest(12) : null;
+    Q = { mode: "train", screen: "play", n: 0, right: 0, missed: [], weakOnly: !!only, picker: makePicker(S.tables, 1, only), ansEl: $("tAns"), qEl: $("tQ"), input: "", locked: true };
+    show("play"); say("Escribe el resultado y pulsa OK. ¡Sin prisa!");
+    nextTrainQ();
+  }
+  function nextTrainQ() {
+    Q.n++;
+    if (Q.n > 10) return trainEnd();
+    $("tCount").textContent = Q.n + " / 10";
+    $("explain").hidden = true; $("tPad").hidden = false;
+    askQ();
+  }
+  function trainAnswer(ok, a, b) {
+    if (ok) {
+      Q.right++; Q.ansEl.className = "ans ok"; sfx.ok();
+      say(pick(PRAISE) + (lvl(Q.k) === 3 ? " ¡Esa flor ya ha florecido! 🌷" : ""));
+      later(nextTrainQ, 800);
+    } else {
+      if (!Q.missed.includes(Q.k)) Q.missed.push(Q.k);
+      Q.picker.fail(Q.k);
+      Q.ansEl.className = "ans bad"; sfx.bad();
+      say(pick(["¡Casi! Mira el truco.", "No pasa nada, así se aprende.", "Esta es traviesa. Mírala bien."]));
+      later(() => explain(a, b), 450);
+    }
+  }
+  function explain(a, b) {
+    $("tPad").hidden = true;
+    $("exTitle").textContent = `${a} × ${b} = ${a * b}`;
+    const dots = $("dots"); dots.innerHTML = "";
+    dots.style.gridTemplateColumns = `repeat(${b}, 14px)`;
+    for (let r = 0; r < a; r++) for (let c = 0; c < b; c++) { const i = document.createElement("i"); if (r >= 5) i.className = "five"; dots.appendChild(i); }
+    $("dotsCap").textContent = `${a} filas de ${b} bolitas = ${a * b} bolitas`;
+    $("exTip").textContent = trick(a, b) + (a !== b ? ` Y recuerda: ${a} × ${b} es lo mismo que ${b} × ${a}.` : "");
+    $("explain").hidden = false; $("exOk").focus();
+  }
+  $("exOk").onclick = () => { sfx.tap(); nextTrainQ(); };
+  function trainEnd() {
+    const q = Q; Q = null;
+    $("endScore").textContent = q.right + " / 10";
+    const msg = q.right === 10 ? "¡Perfecto! Ya estás listo para los animales más difíciles."
+      : q.right >= 7 ? "¡Muy bien! Tu jardín está creciendo."
+      : q.right >= 4 ? "¡Buen trabajo! Cada vez te sale mejor."
+      : "¡Has practicado un montón! Mañana saldrá mejor todavía.";
+    const tail = q.weakOnly ? " Cada vez que aciertas una de tus falladas, sale un poco menos." : "";
+    $("endMsg").textContent = msg + tail; say(msg + tail);
+    lastWeak = q.weakOnly;
+    $("endMissBox").hidden = !q.missed.length;
+    fillReview($("endMiss"), q.missed);
+    show("end");
+  }
+  $("trainStart").onclick = () => { sfx.tap(); startTraining(false); };
+  $("trainWeak").onclick = () => { sfx.tap(); startTraining(true); say("¡Vamos a por las que más te cuestan! Si fallas, te enseño el truco."); };
+  let lastWeak = false;
+  $("again").onclick = () => { sfx.tap(); startTraining(lastWeak && weakest(1).length > 0); };
+  $("playQuit").onclick = () => { sfx.tap(); Q = null; renderTrain(); show("train"); };
+
+  /* ---------- Jardín ---------- */
+  function renderGarden() {
+    const g = $("gardenGrid"); g.innerHTML = "";
+    const h = (t) => Object.assign(document.createElement("span"), { className: "h", textContent: t });
+    g.appendChild(h("×"));
+    for (let b = 1; b <= 10; b++) g.appendChild(h(b));
+    for (let a = 1; a <= 10; a++) {
+      g.appendChild(h(a));
+      for (let b = 1; b <= 10; b++) {
+        const l = lvl(a + "x" + b), p = document.createElement("button");
+        const k = a + "x" + b, weak = miss(k) >= 1.5 && l < 3;
+        p.className = "plot" + (weak ? " weak" : l ? " l" + l : "");
+        p.textContent = weak ? "🥀" : ["", "🌱", "🌿", "🌷"][l];
+        p.setAttribute("aria-label", `${a} por ${b}`);
+        p.onclick = () => { $("gcap").textContent = `${a} × ${b} = ${a * b} · ${weak ? "necesita repaso: te cuesta, así que saldrá más a menudo" : ["todavía sin plantar", "brotando", "creciendo", "¡dominada!"][l]}`; };
+        g.appendChild(p);
+      }
+    }
+  }
+  $("toGarden").onclick = () => { sfx.tap(); renderGarden(); show("garden"); say("Las casillas marrones esperan semillas. ¡Cada acierto las hace crecer!"); };
+
+  /* ---------- Museo ---------- */
+  function renderMuseum() {
+    const m = $("museumGrid"); m.innerHTML = "";
+    Object.entries(KINDS).forEach(([kind, label]) => {
+      const ids = CR.map((c, i) => i).filter(i => CR[i].kind === kind);
+      const got = ids.filter(i => S.caught.includes(i)).length;
+      m.appendChild(Object.assign(document.createElement("h3"), { className: "mus-head", textContent: `${label} · ${got}/${ids.length}` }));
+      ids.forEach(i => addSlot(m, CR[i], i));
+    });
+    $("musCount").textContent = `Mi museo · ${S.caught.length}/${CR.length}`;
+  }
+  function addSlot(m, c, i) {
+    const has = S.caught.includes(i), seen = S.seen.includes(i);
+    const d = document.createElement("button");
+    d.className = "slot" + (has ? "" : seen ? " seen" : " no") + (S.pet === i ? " pet" : "");
+    d.innerHTML = `<span class="e">${c.e}</span><small>${has || seen ? cap(c.n) : "???"}</small><span class="stars">${stars(c.tier)}</span>`;
+    d.onclick = () => { sfx.tap(); renderFicha(i, true); };
+    m.appendChild(d);
+  }
+  $("toMuseum").onclick = () => {
+    sfx.tap(); renderMuseum();
+    if (curPet()) renderFicha(S.pet); else $("musFicha").innerHTML = '<p class="mus-detail">Toca un animal que tengas para ver su ficha, escuchar su sonido y elegirlo como mascota.</p>';
+    show("museum");
+    say(S.caught.length ? "¡Mira qué colección! Los grises aún están por atrapar." : "El museo está vacío. ¡Pasea por la hierba alta para encontrar animales!");
+  };
+
+  /* ---------- Teclado ---------- */
+  document.addEventListener("keydown", e => {
+    if (screen === "field") {
+      const d = KEYDIR[e.key];
+      if (d) { e.preventDefault(); hold(d); }
+      return;
+    }
+    if (screen === "intro" && e.key === "Enter") { e.preventDefault(); $("inFight").click(); return; }
+    if (screen === "result" && e.key === "Enter") { e.preventDefault(); $("resOk").click(); return; }
+    if (screen === "play" && !$("explain").hidden && e.key === "Enter") { e.preventDefault(); $("exOk").click(); return; }
+    if (screen === "battle" && Q && Q.choice) {
+      const o = $("bChoices").querySelectorAll(".opt")[Number(e.key) - 1];
+      if (/^[1-4]$/.test(e.key) && o) o.click();
+      return;
+    }
+    if (screen === "battle" || screen === "play") {
+      if (/^[0-9]$/.test(e.key)) press(e.key);
+      else if (e.key === "Backspace") { e.preventDefault(); press("del"); }
+      else if (e.key === "Enter") { e.preventDefault(); press("ok"); }
+    }
+  });
+  document.addEventListener("keyup", e => { const d = KEYDIR[e.key]; if (d) release(d); });
+  window.addEventListener("blur", () => { held.length = 0; renderDpad(); });
+
+  makePad($("bPad")); makePad($("tPad"));
+  renderSound();
+  show("field");
+  sizeCanvas();
+  if (!S.intro) {
+    say("¡Hola, soy Nutri! Usa las flechas para pasear. Si caminas por la hierba alta, ¡puede salir un animal! Gánale el duelo para llevarlo al museo.");
+    S.intro = true; save();
+  } else say("¡Hola otra vez! " + pick(NUTRI_TALK));
+})();
+</script>
+</body>
+</html>
