@@ -65,6 +65,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(24px, 6.5vw, 32px);
   color: var(--paper); text-shadow: 0 3px 0 var(--sea-deep); letter-spacing: .3px;
 }
+.top-btns { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .sound { font-size: 13px; font-weight: 800; color: var(--ink-soft); background: rgba(255,250,238,.8); padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
 
 /* Bocadillo de diálogo */
@@ -234,6 +235,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
 .slot.pet { outline: 3px solid var(--grass); }
 .pet-tag { font-size: 22px; line-height: 1; }
 .opt.gone { opacity: .2; }
+.choices.waiting .opt { opacity: .55; }
 .rewards { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
 .rewards li { background: #fff4d6; border-radius: 12px; padding: 8px 12px; font-weight: 800; }
 .mode .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--chip); border-radius: 16px; padding: 5px; }
@@ -296,7 +298,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       <h1>Isla de las Tablas</h1>
       <div class="chips-top"><span class="coin-chip" id="coinChip">🪙 0</span><span class="title-chip" id="titleChip" hidden></span></div>
     </div>
-    <button class="sound" id="sound">Sonido: sí</button>
+    <div class="top-btns"><button class="sound" id="voice">Voz: sí</button><button class="sound" id="sound">Sonido: sí</button></div>
   </div>
 
   <!-- CAMPO -->
@@ -818,6 +820,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     if (tile(nx, ny) === "z" && tile(P.x, P.y) !== "z") say("Paso de cebra: los coches se paran para dejarte cruzar.");
     P.move = { fx: P.x, fy: P.y, tx: nx, ty: ny, t0: performance.now() };
     PET.fx = PET.x; PET.fy = PET.y; PET.x = P.x; PET.y = P.y;
+    if (d === "left" || d === "right") PET.face = d;
   }
   const STEP_MS = 170;
   // Coches decorativos que se paran ante el paso de cebra si estás cruzando
@@ -848,6 +851,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     "Dicen que la Capitana Pina guarda tesoros en su barca, al final del muelle…",
     "Al este de la isla hay una carretera. Desde allí se sube a la montaña o se baja a la selva y al pantano.",
     "Solo te saldrán animales que todavía no tienes. ¡Así completarás antes el museo!",
+    "Con el botón «Voz» de arriba puedes oír cada multiplicación en alto. ¡Repítela conmigo para memorizarla!",
     "Toca un animal en el museo para ver su ficha y elegirlo como mascota. ¡Cada mascota te ayuda de una forma distinta!",
     "Los vecinos tienen encargos: si les traes el animal que piden, te pagan con monedas.",
     "Algunas zonas están cerradas con vallas 🚧. ¡Atrapa más animales para abrirlas!",
@@ -1195,7 +1199,10 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       const k = P.move ? Math.min(1, (t - P.move.t0) / STEP_MS) : 1;
       const qx = (PET.fx + (PET.x - PET.fx) * k) * TS - camX + TS / 2, qy = (PET.fy + (PET.y - PET.fy) * k) * TS - camY + TS / 2;
       cx.font = `${Math.round(TS * 0.62)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
-      cx.fillText(pet.e, qx, qy + Math.sin(t / 160) * 2);
+      // Los emojis de animales suelen mirar a la izquierda: se voltean al andar hacia la derecha
+      cx.save(); cx.translate(qx, qy + Math.sin(t / 160) * 2);
+      if (PET.face === "right") cx.scale(-1, 1);
+      cx.fillText(pet.e, 0, 0); cx.restore();
       cx.font = `${Math.round(TS * 0.8)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
     }
     const under = tile(Math.round(P.px), Math.round(P.py));
@@ -1310,9 +1317,10 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     recordAnswer(Q.k, ok);
     if (Q.mode === "battle") battleAnswer(ok, a, b); else trainAnswer(ok, a, b);
   }
-  function askQ() {
+  function askQ(onReady) {
     // En la tabla seguida la pregunta es siempre la siguiente de la tabla (si fallas, se repite)
-    Q.k = Q.test === "seq" ? Q.seqTable + "x" + Q.seqB : Q.picker.next(); Q.input = ""; Q.locked = false;
+    Q.k = Q.test === "seq" ? Q.seqTable + "x" + Q.seqB : Q.picker.next(); Q.input = ""; Q.locked = true;
+    Q.qid = (Q.qid || 0) + 1;
     const [a, b] = Q.k.split("x").map(Number);
     // Nivel experto: la mitad de las veces falta un número ("7 × ? = 56")
     Q.missingNow = !!Q.missing && Math.random() < 0.5;
@@ -1320,6 +1328,15 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     Q.qEl.classList.toggle("long", Q.missingNow);
     Q.ansEl.className = "ans"; Q.ansEl.textContent = "";
     if (Q.choice) renderChoices(a, b);
+    // Con voz, no se puede responder (ni corre el reloj) hasta que termina de leer la pregunta
+    const q = Q, id = Q.qid, box = $("bChoices");
+    const ready = () => {
+      if (Q !== q || Q.qid !== id) return;
+      Q.locked = false; Q.ansEl.textContent = ""; box.classList.remove("waiting");
+      if (onReady) onReady();
+    };
+    if (voiceOn()) { Q.ansEl.textContent = "🔊"; if (Q.choice) box.classList.add("waiting"); speakThen(questionText(a, b, Q.missingNow), ready); }
+    else ready();
   }
 
   // Tres respuestas falsas creíbles: errores típicos de tabla vecina (7×7 o 6×8 en vez de 7×8), ±1 y ±10
@@ -1692,9 +1709,69 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     "lobo": ["¡Auuuuu!", "Vive en manada y aúlla para hablar con su familia."],
     "mamut": ["¡Pruuuu!", "Era pariente de los elefantes y estaba cubierto de pelo largo."]
   };
-  function speak(text) {
-    try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.lang = "es-ES"; u.rate = 0.95; speechSynthesis.speak(u); } catch (e) {}
+  const canSpeak = "speechSynthesis" in window;
+  let esVoice = null;
+  function pickVoice() {
+    try {
+      const vs = speechSynthesis.getVoices();
+      esVoice = vs.find(v => v.lang === "es-ES") || vs.find(v => /^es/i.test(v.lang)) || null;
+    } catch (e) {}
   }
+  if (canSpeak) { pickVoice(); try { speechSynthesis.onvoiceschanged = pickVoice; } catch (e) {} }
+  function speak(text) {
+    if (!canSpeak) return;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "es-ES"; u.rate = 0.95; if (esVoice) u.voice = esVoice;
+      speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+  // Lee en alto la multiplicación con su resultado, como cuando se canta la tabla
+  const voiceOn = () => canSpeak && S.voice !== false;
+  // Números en palabras, solo para calcular cuánto tarda la voz en decir una frase
+  function numEs(n) {
+    const U = ["cero", "uno", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce", "trece", "catorce", "quince", "dieciséis", "diecisiete", "dieciocho", "diecinueve", "veinte"];
+    const D = ["", "", "veinti", "treinta", "cuarenta", "cincuenta", "sesenta", "setenta", "ochenta", "noventa"];
+    if (n <= 20) return U[n];
+    if (n === 100) return "cien";
+    const d = Math.floor(n / 10), u = n % 10;
+    return d === 2 ? "veinti" + U[u] : D[d] + (u ? " y " + U[u] : "");
+  }
+  // Habla y avisa justo cuando termina la frase. No se espera al aviso de fin del navegador,
+  // que a menudo llega tarde: se calcula la duración de la frase y se desbloquea al acabar.
+  function speakThen(text, cb) {
+    let done = false;
+    const fin = () => { if (!done) { done = true; cb(); } };
+    if (!voiceOn()) return fin();
+    const spoken = text.replace(/\d+/g, m => numEs(Number(m)));
+    const dur = 100 + 55 * spoken.length;
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "es-ES"; u.rate = 1.05; if (esVoice) u.voice = esVoice;
+      let started = false;
+      u.onstart = () => { started = true; setTimeout(fin, dur); };
+      u.onend = fin; u.onerror = fin;
+      speechSynthesis.speak(u);
+      // Si la voz no llega a arrancar enseguida, se cuenta desde ya
+      setTimeout(() => { if (!started) setTimeout(fin, dur); }, 400);
+    } catch (e) { return fin(); }
+    setTimeout(fin, 2500);
+  }
+  const questionText = (a, b, missing) => missing ? `${a} por cuánto es ${a * b}` : `${a} por ${b}`;
+  // Tras responder: si acierta, solo el resultado; si falla, la multiplicación entera para fijarla
+  function sayAnswer(a, b, ok, missing) {
+    if (!voiceOn()) return;
+    speak(ok ? String(missing ? b : a * b) : `${a} por ${b}, ${a * b}`);
+  }
+  function renderVoice() { $("voice").hidden = !canSpeak; $("voice").textContent = "Voz: " + (voiceOn() ? "sí" : "no"); }
+  $("voice").onclick = () => {
+    S.voice = !voiceOn(); save(); renderVoice(); sfx.tap();
+    if (S.voice) speak("Voz activada. 7 por 8, 56.");
+    else try { speechSynthesis.cancel(); } catch (e) {}
+  };
+  renderVoice();
 
   // 1. Mascotas: cada animal atrapado puede acompañarte y darte una ventaja en los duelos
   const PERK_BY_NAME = {
@@ -1918,16 +1995,22 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     $("lives").innerHTML = Array.from({ length: Q.maxLives }, (_, i) => `<span class="${i < Q.lives ? "" : "lost"}">🍎</span>`).join("");
     $("lives").setAttribute("aria-label", `Te quedan ${Q.lives} manzanas`);
   }
-  function nextBattleQ() { askQ(); startTimer(Q.time, battleTimeout); }
+  function nextBattleQ() {
+    // Mientras se lee la pregunta, la barra de tiempo se queda llena
+    $("timerFill").style.transform = "scaleX(1)"; $("timerFill").className = "timer-fill";
+    $("secs").textContent = Q.time.toFixed(1).replace(".", ",") + " s";
+    askQ(() => startTimer(Q.time, battleTimeout));
+  }
   function battleAnswer(ok, a, b) {
     stopTimer();
     if (!ok) return battleMiss(a, b, "¡Uy!");
     Q.hp--; if (Q.test === "seq") Q.seqB++;
     renderHP();
-    Q.ansEl.className = "ans ok"; sfx.hit();
+    Q.ansEl.className = "ans ok"; sfx.hit(); sayAnswer(a, b, true, Q.missingNow);
     const f = $("foeEmo"); f.className = "foe"; void f.offsetWidth; f.className = "foe hit";
     say(pick(PRAISE));
-    if (Q.hp <= 0) later(battleWin, 700); else later(nextBattleQ, 550);
+    // Con voz se espera un poco más para que dé tiempo a oír el resultado
+    if (Q.hp <= 0) later(battleWin, voiceOn() ? 1100 : 700); else later(nextBattleQ, voiceOn() ? 900 : 550);
   }
   function battleTimeout() {
     if (!Q || Q.locked) return;
@@ -1943,12 +2026,12 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     renderLives();
     if (!Q.missed.includes(Q.k)) Q.missed.push(Q.k);
     Q.picker.fail(Q.k);
-    Q.ansEl.className = "ans bad"; Q.ansEl.textContent = Q.missingNow ? b : a * b; sfx.bad();
+    Q.ansEl.className = "ans bad"; Q.ansEl.textContent = Q.missingNow ? b : a * b; sfx.bad(); sayAnswer(a, b, false);
     if (Q.choice) markChoices(Q.missingNow ? b : a * b, null);
     const card = $("battle"); card.classList.remove("hurt"); void card.offsetWidth; card.classList.add("hurt");
     const left = Q.lives === 1 ? "Te queda 1 manzana." : `Te quedan ${Q.lives} manzanas.`;
     say(forgive ? `¡${cap(Q.pet.n)} te protege! Este fallo no cuenta. ${a} × ${b} = ${a * b}.` : `${why} ${a} × ${b} = ${a * b}.` + (Q.lives > 0 ? " " + left : ""));
-    if (Q.lives <= 0) later(battleLose, 1600); else later(nextBattleQ, 1700);
+    if (Q.lives <= 0) later(battleLose, 1900); else later(nextBattleQ, voiceOn() ? 2000 : 1700);
   }
   $("bFlee").onclick = () => {
     const q = Q; stopTimer(); sfx.flee(); P.cool = 2; goField();
@@ -2036,9 +2119,9 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   }
   function trainAnswer(ok, a, b) {
     if (ok) {
-      Q.right++; Q.ansEl.className = "ans ok"; sfx.ok();
+      Q.right++; Q.ansEl.className = "ans ok"; sfx.ok(); sayAnswer(a, b, true, false);
       say(pick(PRAISE) + (lvl(Q.k) === 3 ? " ¡Esa flor ya ha florecido! 🌷" : ""));
-      later(nextTrainQ, 800);
+      later(nextTrainQ, voiceOn() ? 1000 : 800);
     } else {
       if (!Q.missed.includes(Q.k)) Q.missed.push(Q.k);
       Q.picker.fail(Q.k);
@@ -2050,6 +2133,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   function explain(a, b) {
     $("tPad").hidden = true;
     $("exTitle").textContent = `${a} × ${b} = ${a * b}`;
+    sayAnswer(a, b, false);
     const dots = $("dots"); dots.innerHTML = "";
     dots.style.gridTemplateColumns = `repeat(${b}, 14px)`;
     for (let r = 0; r < a; r++) for (let c = 0; c < b; c++) { const i = document.createElement("i"); if (r >= 5) i.className = "five"; dots.appendChild(i); }
