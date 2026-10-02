@@ -272,23 +272,41 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   .hud .big { font-size: 15px; padding: 6px 10px; }
   .hud .big small { font-size: 12px; }
 }
-/* Pantallas grandes: mapa grande a la izquierda, Nutri en una columna lateral y todo lo demás ampliado */
-@media (min-width: 1100px) {
-  .wrap { max-width: 1500px; display: grid; grid-template-columns: minmax(0, 1fr) 340px; column-gap: 24px; row-gap: 16px; align-items: start; }
-  .titlebar { grid-column: 1 / -1; zoom: 1.3; }
-  .wrap > main { grid-column: 1; grid-row: 2; }
-  .wrap > main:not(.field) { zoom: 1.35; width: 100%; max-width: 640px; justify-self: center; }
-  .talk { grid-column: 2; grid-row: 2; position: sticky; top: 24px; zoom: 1.2; margin-top: 22px; }
-  .field { padding: 14px; gap: 14px; }
-  .field .controls { zoom: 1.3; justify-content: center; gap: 40px; flex-wrap: nowrap; }
+/* Tablets en vertical: todo más ancho para que el mapa ocupe la pantalla */
+@media (min-width: 600px) and (max-width: 899px) {
+  .wrap { max-width: 860px; }
+  .wrap > main:not(.field) { zoom: 1.2; width: 100%; max-width: 640px; margin-inline: auto; }
+  .talk { zoom: 1.1; }
+  .field .controls { zoom: 1.2; justify-content: center; gap: 32px; flex-wrap: nowrap; }
   .field .hud { flex: 0 1 360px; }
 }
+/* Tablets en horizontal y pantallas grandes: mapa a la izquierda;
+   Nutri, la cruceta y los botones en la columna de la derecha */
+@media (min-width: 900px) {
+  .wrap { max-width: 1500px; display: grid; grid-template-columns: minmax(0, 1fr) 320px; column-gap: 20px; row-gap: 12px; align-items: start; }
+  .titlebar { grid-column: 1 / -1; zoom: 1.15; }
+  .wrap > main { grid-column: 1; grid-row: 2; }
+  .wrap > main:not(.field) { zoom: 1.25; width: 100%; max-width: 640px; justify-self: center; }
+  .side { grid-column: 2; grid-row: 2; position: sticky; top: 12px; display: flex; flex-direction: column; gap: 14px; }
+  .field { padding: 12px; }
+  .side .controls { background: var(--paper); border-radius: 24px; padding: 16px; box-shadow: 0 4px 0 var(--paper-edge); flex-direction: column; align-items: stretch; gap: 14px; flex-wrap: nowrap; }
+  .side .dpad { align-self: center; grid-template-columns: repeat(3, 70px); grid-template-rows: repeat(3, 62px); gap: 5px; }
+  .side .dpad button { font-size: 26px; }
+  .side .hud { grid-template-columns: 1fr 1fr; min-width: 0; flex: none; }
+}
+@media (min-width: 1300px) {
+  .wrap { grid-template-columns: minmax(0, 1fr) 360px; column-gap: 24px; }
+  .titlebar { zoom: 1.3; }
+  .wrap > main:not(.field) { zoom: 1.35; }
+  .side .talk { zoom: 1.1; }
+  .side .controls { zoom: 1.1; }
+}
 @media (min-width: 1700px) {
-  .wrap { max-width: 2000px; grid-template-columns: minmax(0, 1fr) 400px; }
+  .wrap { max-width: 2000px; grid-template-columns: minmax(0, 1fr) 420px; }
   .titlebar { zoom: 1.6; }
   .wrap > main:not(.field) { zoom: 1.65; }
-  .talk { zoom: 1.45; }
-  .field .controls { zoom: 1.55; }
+  .side .talk { zoom: 1.3; }
+  .side .controls { zoom: 1.3; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
@@ -312,7 +330,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       <div class="zone" id="zoneTag">Pradera Florida</div>
       <div class="flash" id="flash" hidden></div>
     </div>
-    <div class="controls">
+    <div class="controls" id="controls">
       <div class="dpad" id="dpad" aria-label="Mover">
         <button class="u" data-dir="up" aria-label="Arriba">▲</button>
         <button class="l" data-dir="left" aria-label="Izquierda">◀</button>
@@ -477,11 +495,14 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     <div class="museum" id="museumGrid"></div>
   </main>
 
-  <section class="talk" aria-live="polite">
-    <span class="who">Nutri</span>
-    <span class="face" aria-hidden="true">🦦</span>
-    <p id="say"></p>
-  </section>
+  <aside class="side" id="side">
+    <section class="talk" aria-live="polite">
+      <span class="who">Nutri</span>
+      <span class="face" aria-hidden="true">🦦</span>
+      <p id="say"></p>
+    </section>
+    <div id="sideControls" hidden></div>
+  </aside>
 </div>
 
 <script>
@@ -672,9 +693,20 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   /* ---------- Pantallas ---------- */
   const SCREENS = ["field", "intro", "battle", "result", "npc", "casa", "shop", "train", "play", "end", "garden", "museum"];
   let screen = "field";
+  // En pantallas anchas los mandos van en la columna de la derecha, bajo Nutri, y el mapa se agranda
+  const sideMQ = window.matchMedia("(min-width: 900px)");
+  function placeControls() {
+    const ctr = $("controls"), wide = sideMQ.matches;
+    const target = wide ? $("sideControls") : $("field");
+    if (ctr.parentElement !== target) target.appendChild(ctr);
+    $("sideControls").hidden = !(wide && screen === "field");
+  }
+  const onLayoutChange = () => { placeControls(); sizeCanvas(); };
+  if (sideMQ.addEventListener) sideMQ.addEventListener("change", onLayoutChange); else sideMQ.addListener(onLayoutChange);
   function show(id) {
     screen = id;
     SCREENS.forEach(s => $(s).hidden = s !== id);
+    placeControls();
     held.length = 0; renderDpad();
     if (id === "field") { renderHud(); startLoop(); }
   }
@@ -912,9 +944,16 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   function sizeCanvas() {
     const w = $("mapwrap").clientWidth || 300;
     // Casillas más grandes cuanto más ancho es el mapa (unas 18 a lo ancho en pantallas grandes)
-    TS = w < 420 ? 34 : w < 800 ? 40 : Math.min(80, Math.round(w / 18));
-    const big = w >= 800;
-    VW = w; VH = Math.round(big ? Math.max(360, Math.min(w * 0.62, window.innerHeight - 330)) : Math.max(240, Math.min(w * 1.05, 460, window.innerHeight - 400)));
+    const side = sideMQ.matches;
+    TS = w < 420 ? 34 : w < 800 ? 40 : Math.min(80, Math.round(w / (side ? 16 : 18)));
+    let vh;
+    if (side) {
+      // Con los mandos a la derecha, el mapa baja hasta el final de la pantalla
+      const top = $("mapwrap").getBoundingClientRect().top + window.scrollY;
+      vh = Math.max(320, Math.min(w * 0.85, window.innerHeight - top - 28));
+    } else if (w >= 600) vh = Math.max(360, Math.min(w * 0.8, window.innerHeight - 420));
+    else vh = Math.max(240, Math.min(w * 1.05, 460, window.innerHeight - 400));
+    VW = w; VH = Math.round(vh);
     const dpr = window.devicePixelRatio || 1;
     cv.width = Math.round(VW * dpr); cv.height = Math.round(VH * dpr);
     cv.style.height = VH + "px";
