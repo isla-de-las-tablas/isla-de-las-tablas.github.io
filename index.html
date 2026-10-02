@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Isla de las Tablas">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20100%20100%22%3E%3Ctext%20y%3D%22.9em%22%20font-size%3D%2290%22%3E%F0%9F%8F%9D%EF%B8%8F%3C%2Ftext%3E%3C%2Fsvg%3E">
+<script defer src="https://cloud.umami.is/script.js" data-website-id="6e7c0d93-6b0e-4944-8c6d-23aac9443b31"></script>
 <style>
 /* Base: lo que antes ponía el visor de Claude, más ajustes táctiles para móviles y tablets */
 *, *::before, *::after { box-sizing: border-box; }
@@ -677,6 +678,7 @@ input { -webkit-user-select: text; user-select: text; }
   const $ = (id) => document.getElementById(id);
   const say = (t) => { $("say").textContent = t; };
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  function track(name, data) { try { if (window.umami && window.umami.track) window.umami.track(name, data); } catch (e) {} }
   const lvl = (k) => S.levels[k] || 0;
   const miss = (k) => (S.miss && S.miss[k]) || 0;
   // Registra cada respuesta. Un fallo suma 1 a su contador (y medio a la inversa: 7×8 ↔ 8×7);
@@ -970,6 +972,8 @@ input { -webkit-user-select: text; user-select: text; }
     const z = zoneAt(P.x, P.y);
     if (z !== lastZone) {
       lastZone = z; $("zoneTag").textContent = ZONES[z].name;
+      S.zonesSeen = S.zonesSeen || [];
+      if (!S.zonesSeen.includes(z)) { S.zonesSeen.push(z); track("zona-nueva", { zona: z }); }
       const left = missingIn(z).length;
       say(ZONES[z].name + ". " + (left ? ZONES[z].hint + ` Te faltan ${left} ${left === 1 ? "animal" : "animales"} de esta zona.` : "¡Aquí ya los tienes todos! Busca en otras zonas."));
     }
@@ -1743,7 +1747,7 @@ input { -webkit-user-select: text; user-select: text; }
     SHOP_ITEMS.forEach(({ k, price }) => {
       const it = ITEMS[k];
       row(it.e, it.n, `${it.d}. Tienes ${S.items[k]}.`, `🪙 ${price}`, S.coins < price, "", () => {
-        S.coins -= price; S.items[k]++; save(); sfx.ok(); renderShop();
+        S.coins -= price; S.items[k]++; save(); sfx.ok(); renderShop(); track("compra", { objeto: it.n });
         shopMsg(`¡Aquí tienes: ${it.e} ${it.n}! Úsalo antes de un duelo con un animal.`);
       });
     });
@@ -1752,7 +1756,7 @@ input { -webkit-user-select: text; user-select: text; }
       if (h.special && !owned) return;
       row(h.e, h.n, owned ? (worn ? "Lo llevas puesto." : "Es tuyo. ¿Te lo pones?") : "Un sombrero para tu personaje.",
         owned ? (worn ? "Quitármelo" : "Ponérmelo") : `🪙 ${h.price}`, !owned && S.coins < h.price, worn ? "worn" : "", () => {
-          if (!owned) { S.coins -= h.price; S.hats.push(h.e); S.hat = h.e; sfx.win(); shopMsg(`¡Qué bien te queda la ${h.n.toLowerCase()}! Mírate en el mapa.`); }
+          if (!owned) { track("compra", { objeto: h.n }); S.coins -= h.price; S.hats.push(h.e); S.hat = h.e; sfx.win(); shopMsg(`¡Qué bien te queda la ${h.n.toLowerCase()}! Mírate en el mapa.`); }
           else { S.hat = worn ? null : h.e; sfx.tap(); shopMsg(worn ? "Te has quitado el sombrero." : `Te has puesto: ${h.n}.`); }
           save(); renderShop();
         });
@@ -2033,6 +2037,7 @@ input { -webkit-user-select: text; user-select: text; }
     if (S.tablesDone.includes(a)) return;
     for (let b = 1; b <= 10; b++) if (lvl(a + "x" + b) < 3) return;
     S.tablesDone.push(a); S.coins = (S.coins || 0) + 6;
+    track("tabla-dominada", { tabla: a, total: S.tablesDone.length });
     S.trophies.push(["🌻", `Tabla del ${a} dominada`]);
     addNote(`🌻 ¡Has dominado la tabla del ${a}! Trofeo para tu casa y 🪙 6 monedas.`);
     if ([6, 7, 8, 9].every(t => S.tablesDone.includes(t)) && !S.hats.includes("🌟")) {
@@ -2089,7 +2094,7 @@ input { -webkit-user-select: text; user-select: text; }
   $("toParents").onclick = () => { sfx.tap(); openParents(); };
   $("gateForm").addEventListener("submit", e => {
     e.preventDefault();
-    if (Number($("gateIn").value) === gateAns) { $("gateBox").hidden = true; renderParents(); $("parentBody").hidden = false; }
+    if (Number($("gateIn").value) === gateAns) { $("gateBox").hidden = true; renderParents(); $("parentBody").hidden = false; track("panel-padres"); }
     else $("gateErr").textContent = "No es correcto. Inténtalo de nuevo.";
   });
 
@@ -2382,6 +2387,7 @@ input { -webkit-user-select: text; user-select: text; }
   }
   $("bFlee").onclick = () => {
     const q = Q; stopTimer(); sfx.flee(); P.cool = 2; goField();
+    if (q) track(q.reto ? "reto" : "duelo", q.reto ? { resultado: "abandonado", vecino: q.reto.npc.name, nivel: q.reto.level } : { resultado: "huida", animal: q.c.n, rareza: q.c.tier, prueba: q.test });
     say(q && q.reto ? `${q.reto.npc.name}: ¡Vale, lo dejamos para otro día!` : `Has huido del duelo. ${cap(art(q ? q.c : CR[foe]))} sigue por aquí…`);
   };
 
@@ -2399,6 +2405,7 @@ input { -webkit-user-select: text; user-select: text; }
     sfx.win();
     if (q.reto) {
       const npc = q.reto.npc;
+      track("reto", { resultado: "superado", vecino: npc.name, nivel: q.reto.level, prueba: q.test, regalo: giftReady(npc) ? "si" : "no" });
       if (!giftReady(npc)) {
         return showResult(q, npc.e, "¡Reto superado!",
           `${npc.name} ya te dio su regalo hoy. ¡Vuelve mañana para conseguir otro! Mientras tanto, has practicado un montón.`,
@@ -2414,6 +2421,7 @@ input { -webkit-user-select: text; user-select: text; }
     const isNew = !S.caught.includes(q.idx);
     if (isNew) S.caught.push(q.idx);
     const rewards = isNew ? onCapture(q.idx) : [];
+    track("duelo", { resultado: "ganado", animal: q.c.n, rareza: q.c.tier, zona: q.c.zone, prueba: q.test, museo: S.caught.length });
     save();
     showResult(q, q.c.e, `¡Has atrapado ${art(q.c)}!`,
       (isNew ? `¡Nuevo para el museo! Ya tienes ${S.caught.length} de ${CR.length}. Mira su ficha en el museo: ¡puede ser tu mascota!` : "Ya tenías uno, ¡pero ganar el duelo te ha hecho más fuerte!")
@@ -2422,6 +2430,7 @@ input { -webkit-user-select: text; user-select: text; }
   }
   function battleLose() {
     const q = Q; stopTimer(); Q = null;
+    track(q.reto ? "reto" : "duelo", q.reto ? { resultado: "fallado", vecino: q.reto.npc.name, nivel: q.reto.level, prueba: q.test } : { resultado: "perdido", animal: q.c.n, rareza: q.c.tier, zona: q.c.zone, prueba: q.test });
     if (q.reto) {
       return showResult(q, q.reto.npc.e, "¡Casi lo consigues!",
         `${q.reto.npc.name} dice: «Te faltaron ${q.hp} ${q.hp === 1 ? "acierto" : "aciertos"}. Vuelve a intentarlo cuando quieras, ¡el regalo te espera!»`,
@@ -2461,6 +2470,7 @@ input { -webkit-user-select: text; user-select: text; }
 
   // mode: "normal" (tablas elegidas) · "weak" (más falladas) · "strategy" (trucos) · "path" (camino de las tablas)
   function startTraining(mode) {
+    track("entrenamiento", { modo: mode });
     let only = null, tables = S.tables;
     if (mode === "weak") only = weakest(12);
     if (mode === "strategy") only = strategyFacts();
@@ -2684,34 +2694,6 @@ input { -webkit-user-select: text; user-select: text; }
     say("¡Hola, soy Nutri! Usa las flechas para pasear. Si caminas por la hierba alta, ¡puede salir un animal! Gánale el duelo para llevarlo al museo.");
     S.intro = true; save();
   } else say("¡Hola otra vez! " + pick(NUTRI_TALK));
-})();
-</script>
-<div id="consent" hidden style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:50;max-width:560px;margin:0 auto;background:#fffaee;color:#413b2c;border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:14px 16px;font-family:Nunito,'Segoe UI',system-ui,sans-serif;font-size:15px;font-weight:700;line-height:1.4">
-  <p style="margin:0 0 10px">Para adultos: usamos Google Analytics para contar las visitas y mejorar el juego. Usa cookies. ¿Lo permites?</p>
-  <div style="display:flex;gap:10px;justify-content:flex-end">
-    <button id="consentNo" style="font:inherit;font-weight:800;border:0;border-radius:999px;padding:8px 16px;background:#efe6cc;color:#413b2c;cursor:pointer">No, gracias</button>
-    <button id="consentYes" style="font:inherit;font-weight:800;border:0;border-radius:999px;padding:8px 16px;background:#2c9fb3;color:#fff;cursor:pointer">Aceptar</button>
-  </div>
-</div>
-<script>
-(function () {
-  var KEY = "ga-consent", ID = "G-L3K7HS5017";
-  function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
-  function set(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
-  function loadGA() {
-    window.dataLayer = window.dataLayer || [];
-    window.gtag = function () { dataLayer.push(arguments); };
-    gtag("js", new Date());
-    gtag("config", ID);
-    var s = document.createElement("script");
-    s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=" + ID;
-    document.head.appendChild(s);
-  }
-  var c = get(), box = document.getElementById("consent");
-  if (c === "si") loadGA();
-  else if (c !== "no") box.hidden = false;
-  document.getElementById("consentYes").onclick = function () { set("si"); box.hidden = true; loadGA(); };
-  document.getElementById("consentNo").onclick = function () { set("no"); box.hidden = true; };
 })();
 </script>
 </body>
