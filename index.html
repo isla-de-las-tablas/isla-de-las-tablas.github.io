@@ -887,7 +887,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     "Si un animal se te escapa, pulsa Entrenar y practicamos juntos sin prisa.",
     "¿Sabías que el pulpo y la araña solo preguntan la tabla del 8? ¡Por sus 8 patas!",
     "Cada acierto riega una flor de tu jardín. ¡A ver si lo llenas entero!",
-    "Hay vecinos por la isla con retos. ¡Cuanto más difícil el reto, mejor es el regalo!",
+    "Hay vecinos por la isla con retos. Cada vecino da un regalo al día. ¡Cuanto más difícil el reto, mejor es el regalo!",
     "Dicen que la Capitana Pina guarda tesoros en su barca, al final del muelle…",
     "Al este de la isla hay una carretera. Desde allí se sube a la montaña o se baja a la selva y al pantano.",
     "Solo te saldrán animales que todavía no tienes. ¡Así completarás antes el museo!",
@@ -1552,9 +1552,12 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     $("npcQuest").innerHTML = q
       ? `<span class="ico">📜</span><div><b>Encargo: ${q.desc}</b><span>Recompensa: 🪙 ${q.reward} monedas. Cuando lo consigas, vuelve a hablar conmigo.</span></div>`
       : `<span class="ico">📜</span><div><b>No tengo encargos</b><span>¡Ya has atrapado todo lo que buscaba!</span></div>`;
-    say(`${n.name}: ${thanks ? thanks.trim() : n.hi}`);
+    say(`${n.name}: ${thanks ? thanks.trim() : giftReady(n) ? n.hi : "Hoy ya te he dado mi regalo. Puedes hacer mis retos para practicar, ¡y mañana tendré otro para ti!"}`);
     show("npc");
   }
+  // Un regalo al día por vecino: los retos se pueden repetir para practicar, pero el regalo solo sale una vez
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+  const giftReady = (n) => (S.giftDay || {})[n.name] !== today();
   function renderNpcRetos(n) {
     const box = $("npcRetos"); box.innerHTML = "";
     n.rolled = {};
@@ -1569,7 +1572,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
         <b>${hits} aciertos · ${TESTS[test].time(r.time)} s por pregunta</b>
         <span class="mode-tag">${TESTS[test].ico} ${TESTS[test].name}${test === "seq" ? " del " + seqTable : ""}</span>
         <span>${test === "seq" ? "La tabla del " + seqTable + " entera, de ×1 a ×10" : "Tablas " + ts + (r.missing ? ", con números escondidos" : "")}. Tienes ${r.lives} manzanas: si pierdes las ${r.lives}, se acaba el reto.</span>
-        <span class="prize">${GIFTS[L].slice(0, 4).map(g => g[0]).join("")}…</span>`;
+        <span class="prize">${giftReady(n) ? GIFTS[L].slice(0, 4).map(g => g[0]).join("") + "…" : "🎁 Hoy ya te di mi regalo: solo práctica"}</span>`;
       b.onclick = () => { sfx.tap(); startReto(n, L); };
       box.appendChild(b);
     });
@@ -1595,9 +1598,9 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     S.gifts[key] = (S.gifts[key] || 0) + 1;
     const r = Math.random();
     let extra = null;
-    if (L === 2 && r < 0.35) extra = "manzana";
-    if (L === 3) extra = r < 0.35 ? "manzana" : r < 0.7 ? "reloj" : null;
-    if (L === 4) extra = r < 0.5 ? "red" : r < 0.8 ? "reloj" : "manzana";
+    if (L === 2 && r < 0.15) extra = "manzana";
+    if (L === 3) extra = r < 0.2 ? "manzana" : r < 0.4 ? "reloj" : null;
+    if (L === 4) extra = r < 0.35 ? "red" : r < 0.6 ? "reloj" : r < 0.8 ? "manzana" : null;
     if (extra) S.items[extra]++;
     save();
     const [e, n] = GIFTS[L][Number(key.split("-")[1])];
@@ -1643,15 +1646,16 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   $("toCasa").onclick = () => { sfx.tap(); openCasa(); };
 
   /* ---------- Tienda de Rufo: se venden regalos por monedas y se compran objetos ---------- */
-  const GIFT_VALUE = { 1: 1, 2: 2, 3: 4, 4: 8 };
+  const GIFT_VALUE = { 1: 1, 2: 2, 3: 3, 4: 5 };
   const HATS = [
-    { e: "🧢", n: "Gorra", price: 3 }, { e: "👒", n: "Pamela", price: 5 },
-    { e: "🎩", n: "Chistera", price: 8 },
-    { e: "🎀", n: "Lazo", price: 2 }, { e: "🌸", n: "Flor en el pelo", price: 2 }, { e: "🪶", n: "Pluma de indio", price: 3 },
-    { e: "🍄", n: "Seta", price: 4 }, { e: "⛑️", n: "Casco de rescate", price: 6 }, { e: "🐤", n: "Pollito en la cabeza", price: 9 },
+    { e: "🎀", n: "Lazo", price: 10 }, { e: "🌸", n: "Flor en el pelo", price: 10 },
+    { e: "🧢", n: "Gorra", price: 15 }, { e: "🪶", n: "Pluma de indio", price: 15 },
+    { e: "🍄", n: "Seta", price: 20 }, { e: "👒", n: "Pamela", price: 25 },
+    { e: "⛑️", n: "Casco de rescate", price: 30 }, { e: "🎩", n: "Chistera", price: 40 },
+    { e: "🐤", n: "Pollito en la cabeza", price: 50 },
     { e: "🤠", n: "Sombrero de explorador", special: true }, { e: "🪖", n: "Casco de aventurero", special: true }, { e: "👑", n: "Corona de campeón", special: true }
   ];
-  const SHOP_ITEMS = [{ k: "manzana", price: 2 }, { k: "reloj", price: 2 }, { k: "red", price: 5 }];
+  const SHOP_ITEMS = [{ k: "manzana", price: 4 }, { k: "reloj", price: 4 }, { k: "red", price: 10 }];
   let armed = null;
   function shopMsg(t) { $("shopMsg").textContent = t; }
   function openShop() {
@@ -1871,7 +1875,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     "pulpo": { forgive: 8 }, "araña": { forgive: 8 }, "abeja": { forgive: 6 }, "vaca": { forgive: 4 },
     "cangrejo": { forgive: 10 }, "murciélago": { forgive: 9 },
     "leopardo": { hint: 1 }, "lagartija": { hint: 1 }, "águila": { hint: 1 }, "búho": { hint: 2 },
-    "elefante": { life: 1 }, "perro": { shield: 1 }, "mapache": { coins: 2 }, "rata": { coins: 2 }
+    "elefante": { life: 1 }, "perro": { shield: 1 }, "mapache": { coins: 1 }, "rata": { coins: 1 }
   };
   const PERK_BY_TIER = { 1: { time: 1 }, 2: { time: 2 }, 3: { hits: 1 }, 4: { shield: 1 }, 5: { life: 1, time: 2 } };
   const perkOf = (c) => PERK_BY_NAME[c.n] || PERK_BY_TIER[c.tier];
@@ -1917,12 +1921,12 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   }
 
   // 2 y 3. Monedas por captura y premios por hitos
-  const COIN_TIER = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 10 };
+  const COIN_TIER = { 1: 1, 2: 1, 3: 2, 4: 3, 5: 5 };
   const MILESTONES = [
-    { n: 5, coins: 5 }, { n: 10, hat: "🤠", hatName: "Sombrero de explorador" }, { n: 15, coins: 10 },
-    { n: 25, hat: "🪖", hatName: "Casco de aventurero" }, { n: 35, coins: 15 },
-    { n: 50, hat: "👑", hatName: "Corona de campeón" }, { n: 60, coins: 25 },
-    { n: CR.length, coins: 50, trophy: ["🏆", "Copa de Leyenda de la isla"], title: "Leyenda de la isla" }
+    { n: 5, coins: 3 }, { n: 10, hat: "🤠", hatName: "Sombrero de explorador" }, { n: 15, coins: 5 },
+    { n: 25, hat: "🪖", hatName: "Casco de aventurero" }, { n: 35, coins: 8 },
+    { n: 50, hat: "👑", hatName: "Corona de campeón" }, { n: 60, coins: 12 },
+    { n: CR.length, coins: 30, trophy: ["🏆", "Copa de Leyenda de la isla"], title: "Leyenda de la isla" }
   ];
   const KIND_ONE = { bicho: "un bicho", mar: "una criatura del mar", reptil: "un reptil", mamifero: "un mamífero", ave: "un ave" };
   // Premios de racha: solo se ven en el personaje mientras dure la racha de aciertos seguidos
@@ -1966,14 +1970,14 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     });
     const medal = "Medalla de " + ZONES[c.zone].name;
     if (!missingIn(c.zone).length && !S.trophies.some(t => t[1] === medal)) {
-      S.trophies.push(["🏅", medal]); S.coins += 10;
-      out.push(`🏅 ¡Has completado ${ZONES[c.zone].name}! Medalla para tu casa y 🪙 10 monedas.`);
+      S.trophies.push(["🏅", medal]); S.coins += 5;
+      out.push(`🏅 ¡Has completado ${ZONES[c.zone].name}! Medalla para tu casa y 🪙 5 monedas.`);
     }
     const ids = CR.map((x, i) => i).filter(i => CR[i].kind === c.kind);
     const title = "Experto en " + KINDS[c.kind].toLowerCase();
     if (ids.every(i => S.caught.includes(i)) && !S.titles.includes(title)) {
-      S.titles.push(title); S.title = title; S.trophies.push(["🎖️", title]); S.coins += 15;
-      out.push(`🎖️ ¡Tienes todos los ${KINDS[c.kind].toLowerCase()}! Nuevo título: «${title}» y 🪙 15 monedas.`);
+      S.titles.push(title); S.title = title; S.trophies.push(["🎖️", title]); S.coins += 8;
+      out.push(`🎖️ ¡Tienes todos los ${KINDS[c.kind].toLowerCase()}! Nuevo título: «${title}» y 🪙 8 monedas.`);
     }
     Object.entries(UNLOCK).forEach(([z, req]) => {
       if (n === req && !S.opened.includes(z)) out.push(`🔓 ¡Se ha abierto ${ZONES[z].name}!${z === "mar" ? " Ya puedes subirte a la barca." : ""}`);
@@ -1996,7 +2000,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     if (open.some(i => CR[i].tier >= 3)) opts.push({ type: "tier", v: 3, desc: "Atrapa un animal raro (★★★ o más)" });
     if (!opts.length) return null;
     const q = pick(opts);
-    q.reward = 5 + Math.floor(Math.random() * 6) + (q.type === "tier" ? 5 : 0); q.done = false;
+    q.reward = 3 + Math.floor(Math.random() * 3) + (q.type === "tier" ? 3 : 0); q.done = false;
     return q;
   }
 
@@ -2166,6 +2170,13 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     const q = Q; stopTimer(); Q = null;
     sfx.win();
     if (q.reto) {
+      const npc = q.reto.npc;
+      if (!giftReady(npc)) {
+        return showResult(q, npc.e, "¡Reto superado!",
+          `${npc.name} ya te dio su regalo hoy. ¡Vuelve mañana para conseguir otro! Mientras tanto, has practicado un montón.`,
+          "¡Muy bien! Los retos también sirven para mantener la racha y regar el jardín.");
+      }
+      S.giftDay = S.giftDay || {}; S.giftDay[npc.name] = today();
       const g = giveGift(q.reto.level);
       const extra = g.extra ? ` ¡Y además te da un objeto mágico: ${ITEMS[g.extra].e} ${ITEMS[g.extra].n}! (${ITEMS[g.extra].d})` : "";
       return showResult(q, g.e, `${q.reto.npc.name} te regala: ${g.n}`,
