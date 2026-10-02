@@ -242,6 +242,35 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
 .choices.waiting .opt { opacity: .55; }
 .rewards { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; text-align: left; }
 .rewards li { background: #fff4d6; border-radius: 12px; padding: 8px 12px; font-weight: 800; }
+/* Problemas, pistas, camino de las tablas y panel para padres */
+.q.story { font-family: var(--body); font-size: clamp(18px, 4.6vw, 22px); font-weight: 800; line-height: 1.4; padding-inline: 4px; }
+.hint-line { margin: 0; text-align: center; font-weight: 800; color: var(--sea-deep); background: #e6f4f6; border-radius: 12px; padding: 8px 12px; }
+.timer-fill.free { background: var(--sea); opacity: .35; }
+.path-box { display: flex; flex-direction: column; gap: 8px; background: var(--chip); border-radius: 18px; padding: 14px; }
+.path-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; font-weight: 800; font-size: 14px; }
+.path-row.now { color: var(--sea-deep); }
+.pbar { grid-column: 1 / -1; height: 10px; border-radius: 999px; background: #e6dcbc; overflow: hidden; }
+.pbar i { display: block; height: 100%; background: var(--grass); border-radius: 999px; }
+.path-note { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink-soft); line-height: 1.4; }
+input { -webkit-user-select: text; user-select: text; }
+.gate { display: flex; flex-direction: column; gap: 10px; }
+.gate-form { display: flex; gap: 10px; }
+.gate-form input { flex: 1; min-width: 0; font: inherit; font-size: 24px; font-weight: 800; padding: 8px 14px; border-radius: 14px; border: 2px solid var(--paper-edge); background: #fff; color: var(--ink); }
+.parent-sec { display: flex; flex-direction: column; gap: 8px; }
+.parent-sec h3 { margin: 8px 0 0; font-family: var(--display); font-size: 19px; }
+.parent-sec p { margin: 0; font-weight: 700; line-height: 1.45; }
+.pcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
+.pcard { background: var(--chip); border-radius: 14px; padding: 10px 12px; }
+.pcard b { display: block; font-family: var(--display); font-size: 24px; font-variant-numeric: tabular-nums; }
+.pcard span { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.ptable-wrap { overflow-x: auto; }
+.ptable { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.ptable th, .ptable td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--paper-edge); white-space: nowrap; }
+.ptable th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); }
+.st { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 800; }
+.st.ok { background: #cdebc4; } .st.mid { background: #fff0c2; } .st.bad { background: #f6cfc4; } .st.none { background: #eee6cf; color: var(--ink-soft); }
+.minibar { display: inline-block; height: 8px; background: var(--sea); border-radius: 999px; vertical-align: middle; margin-right: 6px; }
+.tip-box { background: #e3f4dd; border-radius: 14px; padding: 10px 12px; }
 .mode .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: var(--chip); border-radius: 16px; padding: 5px; }
 .mode .seg button { border-radius: 12px; padding: 8px 6px; font-weight: 800; font-size: 15px; color: var(--ink-soft); line-height: 1.2; }
 .mode .seg button small { display: block; font-size: 12px; font-weight: 700; }
@@ -320,7 +349,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       <h1>Isla de las Tablas</h1>
       <div class="chips-top"><span class="coin-chip" id="coinChip">🪙 0</span><span class="streak-chip" id="streakChip" title="Aciertos seguidos">🔥 0</span><span class="title-chip" id="titleChip" hidden></span></div>
     </div>
-    <div class="top-btns"><button class="sound" id="voice">Voz: sí</button><button class="sound" id="sound">Sonido: sí</button></div>
+    <div class="top-btns"><button class="sound" id="toParents">Padres</button><button class="sound" id="voice">Voz: sí</button><button class="sound" id="sound">Sonido: sí</button></div>
   </div>
 
   <!-- CAMPO -->
@@ -433,7 +462,8 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   <!-- ENTRENAR -->
   <main id="train" class="card" hidden>
     <div class="topbar"><button class="exit" data-field>Volver</button><span class="count">Entrenar con Nutri</span><span></span></div>
-    <p class="lead">Aquí no hay prisa. Si fallas, Nutri te enseña el truco con bolitas.</p>
+    <p class="lead">Aquí no hay prisa. Si fallas, Nutri te enseña el truco y luego la escribes tú.</p>
+    <div class="path-box" id="pathBox"></div>
     <p class="label">¿Qué tablas practicamos?</p>
     <div class="chips" id="chips"></div>
     <div class="quick">
@@ -442,6 +472,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       <button class="link" data-set="1,2,3,4,5,6,7,8,9,10">Todas</button>
     </div>
     <button class="big" id="trainStart">Empezar (10 preguntas)</button>
+    <button class="big alt" id="trainStrategy">Trucos: las difíciles desde las fáciles</button>
     <div class="weak-box">
       <p class="label">Las que más te cuestan</p>
       <div class="weak-list" id="weakList"></div>
@@ -455,6 +486,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       <span class="count" id="tCount">1 / 10</span>
       <span></span>
     </div>
+    <p class="hint-line" id="tHint" hidden></p>
     <p class="q" id="tQ">7 × 8</p>
     <div class="ans" id="tAns" aria-live="polite"></div>
     <div class="pad" id="tPad"></div>
@@ -477,6 +509,17 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     </div>
     <button class="big" id="again">Otra vez</button>
     <button class="big alt" data-field>Volver al campo</button>
+  </main>
+
+  <!-- PANEL PARA PADRES -->
+  <main id="parents" class="card" hidden>
+    <div class="topbar"><button class="exit" data-field>Volver</button><span class="count">Panel para padres</span><span></span></div>
+    <div class="gate" id="gateBox">
+      <p class="lead" id="gateQ"></p>
+      <form class="gate-form" id="gateForm"><input id="gateIn" type="number" inputmode="numeric" autocomplete="off" aria-label="Resultado"><button class="big" type="submit">Entrar</button></form>
+      <p class="note" id="gateErr"></p>
+    </div>
+    <div id="parentBody" class="parent-sec" hidden></div>
   </main>
 
   <!-- JARDÍN -->
@@ -638,26 +681,40 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   const miss = (k) => (S.miss && S.miss[k]) || 0;
   // Registra cada respuesta. Un fallo suma 1 a su contador (y medio a la inversa: 7×8 ↔ 8×7);
   // cada acierto le resta medio, así los fallos antiguos se van olvidando cuando ya se dominan.
-  function recordAnswer(k, ok) {
+  // Dominar una multiplicación es recordarla rápido: hasta 3,5 s desde que se puede responder
+  const FAST_MS = 3500;
+  let lastInfo = null;
+  // practice = con pista o con enunciado: cuenta para la racha y el panel, pero no cambia el dominio
+  function recordAnswer(k, ok, rt, practice) {
     const before = S.streak || 0;
     S.streak = ok ? before + 1 : 0;
     S.bestStreak = Math.max(S.bestStreak || 0, S.streak);
     streakChanged(before, S.streak);
-    S.miss = S.miss || {};
+    S.miss = S.miss || {}; S.cnt = S.cnt || {}; S.rt = S.rt || {};
+    const c = S.cnt[k] || [0, 0]; c[1]++; if (ok) c[0]++; S.cnt[k] = c;
+    logDay(ok);
     const [a, b] = k.split("x").map(Number), rev = b + "x" + a;
-    if (ok) {
-      S.levels[k] = Math.min(3, lvl(k) + 1);
-      const m = Math.max(0, miss(k) - 0.5);
-      if (m) S.miss[k] = m; else delete S.miss[k];
-    } else {
-      S.miss[k] = Math.min(10, miss(k) + 1);
-      if (rev !== k) S.miss[rev] = Math.min(10, miss(rev) + 0.5);
-      S.levels[k] = miss(k) >= 2 ? 0 : Math.max(0, lvl(k) - 1);
+    const wasWeak = miss(k) >= 1, prevLvl = lvl(k);
+    const fast = ok && rt != null && rt <= FAST_MS;
+    if (ok && rt != null) S.rt[k] = Math.round(S.rt[k] ? S.rt[k] * 0.6 + rt * 0.4 : rt);
+    if (!practice) {
+      if (ok) {
+        // Si se acierta despacio, sube como mucho hasta "creciendo" (nivel 2); nunca baja por ir lento
+        S.levels[k] = Math.max(prevLvl, Math.min(fast ? 3 : 2, prevLvl + 1));
+        const m = Math.max(0, miss(k) - 0.5);
+        if (m) S.miss[k] = m; else delete S.miss[k];
+      } else {
+        S.miss[k] = Math.min(10, miss(k) + 1);
+        if (rev !== k) S.miss[rev] = Math.min(10, miss(rev) + 0.5);
+        S.levels[k] = miss(k) >= 2 ? 0 : Math.max(0, lvl(k) - 1);
+      }
     }
+    lastInfo = { k, ok, slow: ok && rt != null && !fast, wasWeak, mastered: ok && prevLvl < 3 && lvl(k) === 3 };
+    if (lastInfo.mastered) checkTableMastery(a);
     save();
   }
   // Peso para elegir preguntas: las poco dominadas y, sobre todo, las más falladas salen mucho más
-  const weight = (k) => [16, 9, 4, 1][lvl(k)] + 16 * Math.min(miss(k), 5);
+  const weight = (k) => [16, 9, 4, 1][lvl(k)] + 16 * Math.min(miss(k), 5) + (S.rt && S.rt[k] > 3500 ? 10 : 0);
   const weakest = (n) => Object.keys(S.miss || {}).filter(k => miss(k) >= 1).sort((x, y) => miss(y) - miss(x)).slice(0, n);
   const PRAISE = ["¡Bien hecho!", "¡Genial!", "¡Eso es!", "¡Qué crack!", "¡Perfecto!", "¡Toma ya!", "¡Muy bien!"];
 
@@ -691,7 +748,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   $("sound").onclick = () => { S.sound = !S.sound; save(); renderSound(); sfx.tap(); };
 
   /* ---------- Pantallas ---------- */
-  const SCREENS = ["field", "intro", "battle", "result", "npc", "casa", "shop", "train", "play", "end", "garden", "museum"];
+  const SCREENS = ["field", "intro", "battle", "result", "npc", "casa", "shop", "train", "play", "end", "garden", "museum", "parents"];
   let screen = "field";
   // En pantallas anchas los mandos van en la columna de la derecha, bajo Nutri, y el mapa se agranda
   const sideMQ = window.matchMedia("(min-width: 900px)");
@@ -892,6 +949,9 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     "Al este de la isla hay una carretera. Desde allí se sube a la montaña o se baja a la selva y al pantano.",
     "Solo te saldrán animales que todavía no tienes. ¡Así completarás antes el museo!",
     "Si aciertas 5 seguidas, llevarás el birrete de experto. ¡Con más racha brillarás todavía más!",
+    "Para que una flor del jardín florezca, tienes que recordar la multiplicación rápido, sin contar.",
+    "En Entrenar está tu camino de las tablas: empieza por las fáciles y ve subiendo.",
+    "Si una multiplicación es nueva, no hay reloj: piénsala con calma.",
     "Con el botón «Voz» de arriba puedes oír cada multiplicación en alto. ¡Repítela conmigo para memorizarla!",
     "Toca un animal en el museo para ver su ficha y elegirlo como mascota. ¡Cada mascota te ayuda de una forma distinta!",
     "Los vecinos tienen encargos: si les traes el animal que piden, te pagan con monedas.",
@@ -1391,31 +1451,36 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   }
   function check() {
     if (!Q.input) { say("Escribe un número primero."); return; }
+    if (Q.retype) return retypeCheck();
     Q.locked = true;
     const [a, b] = Q.k.split("x").map(Number);
     const ok = Number(Q.input) === (Q.missingNow ? b : a * b);
-    recordAnswer(Q.k, ok);
+    const rt = Q.tReady ? performance.now() - Q.tReady : null;
+    recordAnswer(Q.k, ok, rt, !!(Q.strategy || Q.storyNow));
     if (Q.mode === "battle") battleAnswer(ok, a, b); else trainAnswer(ok, a, b);
   }
   function askQ(onReady) {
     // En la tabla seguida la pregunta es siempre la siguiente de la tabla (si fallas, se repite)
-    Q.k = Q.test === "seq" ? Q.seqTable + "x" + Q.seqB : Q.picker.next(); Q.input = ""; Q.locked = true;
-    Q.qid = (Q.qid || 0) + 1;
+    Q.k = Q.test === "seq" ? Q.seqTable + "x" + Q.seqOrder[Q.seqPos] : Q.picker.next(); Q.input = ""; Q.locked = true;
+    Q.qid = (Q.qid || 0) + 1; Q.tReady = 0; Q.storyNow = false; Q.speech = null;
     const [a, b] = Q.k.split("x").map(Number);
     // Nivel experto: la mitad de las veces falta un número ("7 × ? = 56")
     Q.missingNow = !!Q.missing && Math.random() < 0.5;
     Q.qEl.textContent = Q.missingNow ? `${a} × ? = ${a * b}` : a + " × " + b;
     Q.qEl.classList.toggle("long", Q.missingNow);
+    Q.qEl.classList.remove("story");
+    // Retos con problema de enunciado, o entrenamiento con pista de estrategia
+    if (Q.decorate) Q.decorate(a, b);
     Q.ansEl.className = "ans"; Q.ansEl.textContent = "";
     if (Q.choice) renderChoices(a, b);
     // Con voz, no se puede responder (ni corre el reloj) hasta que termina de leer la pregunta
     const q = Q, id = Q.qid, box = $("bChoices");
     const ready = () => {
       if (Q !== q || Q.qid !== id) return;
-      Q.locked = false; Q.ansEl.textContent = ""; box.classList.remove("waiting");
+      Q.locked = false; Q.tReady = performance.now(); Q.ansEl.textContent = ""; box.classList.remove("waiting");
       if (onReady) onReady();
     };
-    if (voiceOn()) { Q.ansEl.textContent = "🔊"; if (Q.choice) box.classList.add("waiting"); speakThen(questionText(a, b, Q.missingNow), ready); }
+    if (voiceOn()) { Q.ansEl.textContent = "🔊"; if (Q.choice) box.classList.add("waiting"); speakThen(Q.speech || questionText(a, b, Q.missingNow), ready); }
     else ready();
   }
 
@@ -1532,10 +1597,11 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     for (let i = 0; i < tables.length; i++) { r -= w[i]; if (r <= 0) return tables[i]; }
     return tables[0];
   }
-  function testBanner(test, seqTable, time) {
+  function testBanner(test, seqTable, time, shuffled) {
     const t = TESTS[test];
     const desc = test === "write" ? "Escribe el resultado con el teclado."
       : test === "choice" ? "Elige la respuesta buena entre 4. Hay menos tiempo."
+      : shuffled ? `Toda la tabla del ${seqTable}, pero desordenada, eligiendo entre 4. ¡Muy poco tiempo!`
       : `Toda la tabla del ${seqTable} en orden, de ×1 a ×10, eligiendo entre 4. ¡Muy poco tiempo!`;
     return `<span class="ico">${t.ico}</span><div><b>Prueba: ${t.name} · ${time} s</b><span>${desc}</span></div>`;
   }
@@ -1571,7 +1637,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       b.innerHTML = `<span class="lv">${r.name}<small>${"★".repeat(L)}</small></span>
         <b>${hits} aciertos · ${TESTS[test].time(r.time)} s por pregunta</b>
         <span class="mode-tag">${TESTS[test].ico} ${TESTS[test].name}${test === "seq" ? " del " + seqTable : ""}</span>
-        <span>${test === "seq" ? "La tabla del " + seqTable + " entera, de ×1 a ×10" : "Tablas " + ts + (r.missing ? ", con números escondidos" : "")}. Tienes ${r.lives} manzanas: si pierdes las ${r.lives}, se acaba el reto.</span>
+        <span>${test === "seq" ? "La tabla del " + seqTable + (L >= 3 ? " entera y desordenada" : " entera, de ×1 a ×10") : "Tablas " + ts + (r.missing ? ", con números escondidos" : "")}. Tienes ${r.lives} manzanas: si pierdes las ${r.lives}, se acaba el reto.</span>
         <span class="prize">${giftReady(n) ? GIFTS[L].slice(0, 4).map(g => g[0]).join("") + "…" : "🎁 Hoy ya te di mi regalo: solo práctica"}</span>`;
       b.onclick = () => { sfx.tap(); startReto(n, L); };
       box.appendChild(b);
@@ -1584,10 +1650,10 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     const hits = test === "seq" ? 10 : r.hits;
     startDuel({
       e: n.e, title: `Reto de ${n.name}`, starsText: "★".repeat(L) + " " + r.name,
-      tables: r.tables, minB: r.minB, time: TESTS[test].time(r.time), test, seqTable, seqStart: 1,
+      tables: r.tables, minB: r.minB, time: TESTS[test].time(r.time), test, seqTable, seqStart: 1, seqShuffle: L >= 3,
       hits, lives: r.lives, missing: !!r.missing && test !== "seq",
       reto: { npc: n, level: L },
-      startMsg: `${n.name}: ¡Vamos allá! ${test === "seq" ? "Dime la tabla del " + seqTable + " entera, de ×1 a ×10." : "Consigue " + hits + " aciertos y el regalo es tuyo."} Tienes ${r.lives} manzanas: cada fallo te quita una.`
+      startMsg: `${n.name}: ¡Vamos allá! ${test === "seq" ? "Dime la tabla del " + seqTable + (L >= 3 ? " entera y desordenada." : " entera, de ×1 a ×10.") : "Consigue " + hits + " aciertos y el regalo es tuyo."} Tienes ${r.lives} manzanas: cada fallo te quita una.`
     });
   }
 
@@ -1653,7 +1719,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     { e: "🍄", n: "Seta", price: 20 }, { e: "👒", n: "Pamela", price: 25 },
     { e: "⛑️", n: "Casco de rescate", price: 30 }, { e: "🎩", n: "Chistera", price: 40 },
     { e: "🐤", n: "Pollito en la cabeza", price: 50 },
-    { e: "🤠", n: "Sombrero de explorador", special: true }, { e: "🪖", n: "Casco de aventurero", special: true }, { e: "👑", n: "Corona de campeón", special: true }
+    { e: "🤠", n: "Sombrero de explorador", special: true }, { e: "🪖", n: "Casco de aventurero", special: true }, { e: "👑", n: "Corona de campeón", special: true }, { e: "🌟", n: "Estrella de maestro", special: true }
   ];
   const SHOP_ITEMS = [{ k: "manzana", price: 4 }, { k: "reloj", price: 4 }, { k: "red", price: 10 }];
   let armed = null;
@@ -1853,7 +1919,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       // Si la voz no llega a arrancar enseguida, se cuenta desde ya
       setTimeout(() => { if (!started) setTimeout(fin, dur); }, 400);
     } catch (e) { return fin(); }
-    setTimeout(fin, 2500);
+    setTimeout(fin, Math.max(2500, dur + 1200));
   }
   const questionText = (a, b, missing) => missing ? `${a} por cuánto es ${a * b}` : `${a} por ${b}`;
   // Tras responder: si acierta, solo el resultado; si falla, la multiplicación entera para fijarla
@@ -1948,6 +2014,149 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     if (now > before) { const c = $("streakChip"); c.classList.remove("bump"); void c.offsetWidth; c.classList.add("bump"); }
   }
   function streakNote() { const m = streakMsg; streakMsg = ""; return m ? " " + m : ""; }
+  function addNote(m) { streakMsg = streakMsg ? streakMsg + " " + m : m; }
+
+  // 9. Mensajes que valoran el esfuerzo y la mejora, no solo el acierto
+  function praiseFor(a, b) {
+    const i = lastInfo;
+    if (!i || !i.ok) return pick(PRAISE);
+    if (i.mastered && i.wasWeak) return `¡${a} × ${b} te costaba muchísimo y ya la dominas! Ese esfuerzo se nota. 🌷`;
+    if (i.mastered) return `¡Ya dominas ${a} × ${b}! 🌷`;
+    if (i.wasWeak) return pick(["¡Esta te costaba y ya la sabes!", "¡La que fallabas! Practicar funciona.", "¡Antes se te resistía y mira ahora!"]);
+    if (i.slow) return pick(["¡Bien! Ahora intenta recordarla un poco más rápido.", "¡Correcto! Con práctica te saldrá sin pensar."]);
+    return pick(PRAISE);
+  }
+
+  // 10. Premios por dominar tablas enteras
+  function checkTableMastery(a) {
+    S.tablesDone = S.tablesDone || []; S.trophies = S.trophies || []; S.hats = S.hats || []; S.titles = S.titles || [];
+    if (S.tablesDone.includes(a)) return;
+    for (let b = 1; b <= 10; b++) if (lvl(a + "x" + b) < 3) return;
+    S.tablesDone.push(a); S.coins = (S.coins || 0) + 6;
+    S.trophies.push(["🌻", `Tabla del ${a} dominada`]);
+    addNote(`🌻 ¡Has dominado la tabla del ${a}! Trofeo para tu casa y 🪙 6 monedas.`);
+    if ([6, 7, 8, 9].every(t => S.tablesDone.includes(t)) && !S.hats.includes("🌟")) {
+      S.hats.push("🌟"); S.titles.push("Maestro de las tablas difíciles"); S.title = "Maestro de las tablas difíciles";
+      addNote("🌟 ¡Dominas las tablas del 6, 7, 8 y 9! Premio: la Estrella de maestro para la cabeza y un título nuevo.");
+    }
+    if (S.tablesDone.length === 10) { S.coins += 20; addNote("🏆 ¡Dominas TODAS las tablas! 🪙 20 monedas."); }
+    renderTitle();
+  }
+
+  // 8. Problemas con enunciado en los retos de los vecinos
+  const STORIES = [
+    (n, a, b) => `${n} tiene ${a} cestas con ${b} fresas en cada una. ¿Cuántas fresas tiene?`,
+    (n, a, b) => `En el jardín de ${n} hay ${a} filas de ${b} flores. ¿Cuántas flores hay?`,
+    (n, a, b) => `${n} da ${b} caramelos a cada uno de sus ${a} amigos. ¿Cuántos caramelos reparte?`,
+    (n, a, b) => `${n} cuida ${a} peceras con ${b} peces en cada una. ¿Cuántos peces hay?`,
+    (n, a, b) => `${n} ha encontrado ${a} nidos con ${b} huevos cada uno. ¿Cuántos huevos son?`,
+    (n, a, b) => `${n} lee ${b} cuentos cada semana. ¿Cuántos lee en ${a} semanas?`,
+    (n, a, b) => `${n} guarda ${b} conchas en cada una de sus ${a} cajas. ¿Cuántas conchas tiene?`
+  ];
+  function storyDecorate(a, b) {
+    if (Q.test === "seq" || Q.missingNow || a === 1 || b === 1 || Math.random() > 0.35) return;
+    const txt = pick(STORIES)(Q.reto.npc.name, a, b);
+    Q.storyNow = true; Q.speech = txt;
+    Q.qEl.textContent = txt; Q.qEl.classList.add("story");
+  }
+
+  /* ---------- Panel para padres ---------- */
+  function logDay(ok) {
+    S.days = S.days || {};
+    const d = S.days[today()] || (S.days[today()] = { q: 0, ok: 0, sec: 0 });
+    d.q++; if (ok) d.ok++;
+  }
+  // Minutos de juego: cuenta solo con la pantalla visible y si ha tocado algo en el último minuto
+  let lastAct = Date.now();
+  ["pointerdown", "keydown"].forEach(ev => document.addEventListener(ev, () => { lastAct = Date.now(); }, true));
+  setInterval(() => {
+    if (document.visibilityState !== "visible" || Date.now() - lastAct > 60000) return;
+    S.days = S.days || {};
+    const d = S.days[today()] || (S.days[today()] = { q: 0, ok: 0, sec: 0 });
+    d.sec += 15; save();
+  }, 15000);
+
+  let gateAns = 0;
+  function openParents() {
+    const x = 11 + Math.floor(Math.random() * 9), y = 6 + Math.floor(Math.random() * 4);
+    gateAns = x * y;
+    $("gateQ").textContent = `Zona para adultos. Para entrar, resuelve: ${x} × ${y}`;
+    $("gateIn").value = ""; $("gateErr").textContent = "";
+    $("gateBox").hidden = false; $("parentBody").hidden = true;
+    show("parents");
+    say("Esta parte es para mamá, papá o quien te ayude con las tablas.");
+  }
+  $("toParents").onclick = () => { sfx.tap(); openParents(); };
+  $("gateForm").addEventListener("submit", e => {
+    e.preventDefault();
+    if (Number($("gateIn").value) === gateAns) { $("gateBox").hidden = true; renderParents(); $("parentBody").hidden = false; }
+    else $("gateErr").textContent = "No es correcto. Inténtalo de nuevo.";
+  });
+
+  function renderParents() {
+    const days = S.days || {}, cnt = S.cnt || {}, rts = S.rt || {};
+    const DOW = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
+    const week = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      week.push([d, days[`${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`] || { q: 0, ok: 0, sec: 0 }]);
+    }
+    const tot = week.reduce((acc, [, v]) => ({ q: acc.q + v.q, ok: acc.ok + v.ok, sec: acc.sec + v.sec }), { q: 0, ok: 0, sec: 0 });
+    const pct = (ok, q) => q ? Math.round(100 * ok / q) + " %" : "—";
+    const secs = (ms) => (ms / 1000).toFixed(1).replace(".", ",") + " s";
+    const maxMin = Math.max(1, ...week.map(([, v]) => v.sec / 60));
+
+    // Por tabla: dominadas, precisión, tiempo medio y estado
+    const rows = [];
+    let worst = null;
+    for (let a = 1; a <= 10; a++) {
+      let dom = 0, okN = 0, qN = 0, rtSum = 0, rtN = 0, missSum = 0;
+      for (let b = 1; b <= 10; b++) {
+        const k = a + "x" + b;
+        if (lvl(k) === 3) dom++;
+        if (cnt[k]) { okN += cnt[k][0]; qN += cnt[k][1]; }
+        if (rts[k]) { rtSum += rts[k]; rtN++; }
+        missSum += miss(k);
+      }
+      const acc = qN ? okN / qN : null, avg = rtN ? rtSum / rtN : null;
+      let st = ["none", "Sin practicar"];
+      if (dom >= 9) st = ["ok", "Dominada"];
+      else if (missSum >= 4 || (acc != null && qN >= 5 && acc < 0.7)) st = ["bad", "Le cuesta"];
+      else if (qN || dom || missSum) st = ["mid", "En progreso"];
+      if (st[0] === "bad" && (!worst || missSum > worst.missSum)) worst = { a, missSum };
+      rows.push(`<tr><td>Tabla del ${a}</td><td>${dom}/10</td><td>${acc == null ? "—" : Math.round(acc * 100) + " %"}</td><td>${avg == null ? "—" : secs(avg)}</td><td><span class="st ${st[0]}">${st[1]}</span></td></tr>`);
+    }
+
+    const weak = weakest(10);
+    const slow = Object.keys(rts).filter(k => rts[k] > 3500 && lvl(k) < 3).sort((x, y) => rts[y] - rts[x]).slice(0, 10);
+    const fmtK = (k) => k.replace("x", " × ");
+    const tip = worst
+      ? `Le cuesta sobre todo la tabla del ${worst.a}. Propuesta: 5 minutos al día en Entrenar → «Repasar mis fallos», y «Trucos» si es del 6 al 9.`
+      : weak.length ? `Va bien. Para afianzar, repasad de vez en cuando «Repasar mis fallos» en Entrenar.`
+      : "Todavía hay pocos datos. El panel se irá llenando a medida que juegue.";
+
+    $("parentBody").innerHTML = `
+      <h3>Esta semana</h3>
+      <div class="pcards">
+        <div class="pcard"><b>${Math.round(tot.sec / 60)} min</b><span>jugados</span></div>
+        <div class="pcard"><b>${tot.q}</b><span>multiplicaciones</span></div>
+        <div class="pcard"><b>${pct(tot.ok, tot.q)}</b><span>de aciertos</span></div>
+        <div class="pcard"><b>${knownCount()}/100</b><span>sabidas (con su inversa)</span></div>
+      </div>
+      <div class="tip-box"><p>${tip}</p></div>
+      <h3>Día a día</h3>
+      <div class="ptable-wrap"><table class="ptable"><thead><tr><th>Día</th><th>Minutos</th><th>Preguntas</th><th>Aciertos</th></tr></thead><tbody>
+        ${week.slice().reverse().map(([d, v]) => `<tr><td>${DOW[d.getDay()]} ${d.getDate()}</td><td><span class="minibar" style="width:${Math.round(60 * (v.sec / 60) / maxMin)}px"></span>${Math.round(v.sec / 60)}</td><td>${v.q}</td><td>${pct(v.ok, v.q)}</td></tr>`).join("")}
+      </tbody></table></div>
+      <h3>Por tabla</h3>
+      <p class="note">Dominada = la recuerda en menos de 3,5 s. El tiempo medio cuenta desde que puede responder.</p>
+      <div class="ptable-wrap"><table class="ptable"><thead><tr><th>Tabla</th><th>Dominadas</th><th>Aciertos</th><th>Tiempo medio</th><th>Estado</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>
+      <h3>Las que más falla</h3>
+      <p>${weak.length ? weak.map(k => `<span class="st bad">${fmtK(k)}</span>`).join(" ") : "Ninguna pendiente ahora mismo."}</p>
+      <h3>Las que acierta pero despacio</h3>
+      <p>${slow.length ? slow.map(k => `<span class="st mid">${fmtK(k)} · ${secs(rts[k])}</span>`).join(" ") : "Ninguna por ahora."}</p>
+      <p class="note">Los datos se guardan solo en este dispositivo. Los tiempos y las estadísticas por tabla empiezan a contar desde esta versión del juego.</p>`;
+  }
 
   function renderTitle() {
     const st = S.streak || 0;
@@ -2052,9 +2261,9 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     const time = TESTS[foeTest].time(c.time) + (useItems.has("reloj") ? 3 : 0) + (pk.time || 0);
     const hits = Math.max(1, (foeTest === "seq" ? 10 : c.hits) - (useItems.has("red") ? 2 : 0) - (foeTest === "seq" ? 0 : pk.hits || 0));
     $("inPet").textContent = pet ? `${pet.e} Tu mascota te ayuda: ${perkText(pk)}.` : "Consejo: elige una mascota en el museo y te ayudará en los duelos.";
-    $("inMode").innerHTML = testBanner(foeTest, foeSeq, time);
+    $("inMode").innerHTML = testBanner(foeTest, foeSeq, time, c.tier >= 3);
     $("inTables").textContent = foeTest === "seq" ? "Tabla del " + foeSeq + " entera" : (c.tables.length === 1 ? "Tabla " : "Tablas ") + tablesText(c.tables);
-    $("inTime").textContent = time + " s por pregunta";
+    $("inTime").textContent = time + " s (las nuevas, sin reloj)";
     $("inHits").textContent = hits + (hits === 1 ? " acierto" : " aciertos");
     const box = $("inItems"); box.innerHTML = "";
     const have = Object.keys(ITEMS).filter(k => S.items[k] > 0);
@@ -2081,7 +2290,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       e: c.e, title: cap(c.n), starsText: stars(c.tier), c, idx,
       tables: c.tables, minB: c.minB,
       time: TESTS[foeTest].time(c.time) + (useItems.has("reloj") ? 3 : 0),
-      test: foeTest, seqTable: foeSeq, seqStart: 1 + (foeTest === "seq" && useItems.has("red") ? 2 : 0),
+      test: foeTest, seqTable: foeSeq, seqShuffle: c.tier >= 3, seqStart: 1 + (foeTest === "seq" && useItems.has("red") ? 2 : 0),
       hits: Math.max(1, (foeTest === "seq" ? 10 : c.hits) - (useItems.has("red") ? 2 : 0)),
       lives: 3 + (useItems.has("manzana") ? 1 : 0),
       startMsg: foeTest === "seq" ? `¡Tabla del ${foeSeq} seguida! Elige rápido cada resultado, de ×1 a ×10.` : "¡Empieza el duelo! Contesta antes de que se vacíe la barra."
@@ -2093,7 +2302,9 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     cfg = petAdjust(cfg);
     Q = Object.assign({ mode: "battle", screen: "battle", missed: [], input: "", locked: true }, cfg, {
       hp: cfg.hits, maxLives: cfg.lives, picker: makePicker(cfg.tables, cfg.minB), ansEl: $("bAns"), qEl: $("bQ"),
-      choice: cfg.test !== "write", seqB: cfg.seqStart || 1
+      choice: cfg.test !== "write", seqPos: (cfg.seqStart || 1) - 1,
+      seqOrder: cfg.seqShuffle ? shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      decorate: cfg.reto ? storyDecorate : null
     });
     $("foeName").textContent = cfg.title;
     $("foeStars").textContent = cfg.starsText;
@@ -2107,27 +2318,44 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   }
   function renderHP() {
     $("hp").innerHTML = Array.from({ length: Q.hits }, (_, i) => `<i class="${i < Q.hp ? "" : "gone"}"></i>`).join("");
-    $("hpText").textContent = Q.test === "seq" ? `Tabla del ${Q.seqTable}: vas por el ×${Math.min(10, Q.seqB)}`
+    $("hpText").textContent = Q.test === "seq" ? (Q.seqShuffle ? `Tabla del ${Q.seqTable} desordenada: llevas ${Q.seqPos} de 10` : `Tabla del ${Q.seqTable}: vas por el ×${Q.seqOrder[Math.min(9, Q.seqPos)]}`)
       : Q.hp === 1 ? "¡Solo 1 acierto más!" : `Faltan ${Q.hp} aciertos ${Q.reto ? "para el regalo" : "para atraparlo"}`;
   }
   function renderLives() {
     $("lives").innerHTML = Array.from({ length: Q.maxLives }, (_, i) => `<span class="${i < Q.lives ? "" : "lost"}">🍎</span>`).join("");
     $("lives").setAttribute("aria-label", `Te quedan ${Q.lives} manzanas`);
   }
+  // Primero precisión, después velocidad: una multiplicación nueva va sin reloj
+  // y las poco dominadas tienen más tiempo que las que ya se saben
+  function factTime(k, base) {
+    const seen = (S.cnt && S.cnt[k]) || k in S.levels;
+    if (!seen) return null;
+    return Math.max(3, Math.round(base * [1.6, 1.3, 1, 1][lvl(k)] * 10) / 10);
+  }
   function nextBattleQ() {
     // Mientras se lee la pregunta, la barra de tiempo se queda llena
     $("timerFill").style.transform = "scaleX(1)"; $("timerFill").className = "timer-fill";
-    $("secs").textContent = Q.time.toFixed(1).replace(".", ",") + " s";
-    askQ(() => startTimer(Q.time, battleTimeout));
+    const showTime = () => {
+      const t = factTime(Q.k, Q.time);
+      Q.qTime = t == null ? null : t + (Q.storyNow ? 6 : 0);
+      $("secs").textContent = Q.qTime == null ? "Sin reloj" : Q.qTime.toFixed(1).replace(".", ",") + " s";
+      $("timerFill").classList.toggle("free", Q.qTime == null);
+    };
+    askQ(() => {
+      showTime();
+      if (Q.qTime == null) say("¡Esta es nueva! Sin reloj: piénsala con calma.");
+      else startTimer(Q.qTime, battleTimeout);
+    });
+    if (Q && Q.locked) showTime();
   }
   function battleAnswer(ok, a, b) {
     stopTimer();
     if (!ok) return battleMiss(a, b, "¡Uy!");
-    Q.hp--; if (Q.test === "seq") Q.seqB++;
+    Q.hp--; if (Q.test === "seq") Q.seqPos++;
     renderHP();
     Q.ansEl.className = "ans ok"; sfx.hit(); sayAnswer(a, b, true, Q.missingNow);
     const f = $("foeEmo"); f.className = "foe"; void f.offsetWidth; f.className = "foe hit";
-    say(pick(PRAISE) + streakNote());
+    say(praiseFor(a, b) + streakNote());
     // Con voz se espera un poco más para que dé tiempo a oír el resultado
     if (Q.hp <= 0) later(battleWin, voiceOn() ? 1100 : 700); else later(nextBattleQ, voiceOn() ? 900 : 550);
   }
@@ -2208,6 +2436,7 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
 
   /* ---------- Entrenamiento tranquilo ---------- */
   function renderTrain() {
+    renderPath();
     const weak = weakest(12), wl = $("weakList");
     wl.innerHTML = weak.length
       ? weak.map(k => { const [a, b] = k.split("x"); return `<span>${a} × ${b}</span>`; }).join("")
@@ -2230,24 +2459,34 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
   document.querySelectorAll("[data-set]").forEach(b => b.onclick = () => { S.tables = b.dataset.set.split(",").map(Number); save(); sfx.tap(); renderTrain(); });
   $("toTrain").onclick = () => { sfx.tap(); renderTrain(); show("train"); say("¡Vamos a entrenar! Elige las tablas que quieras practicar."); };
 
-  function startTraining(weakOnly) {
-    const only = weakOnly ? weakest(12) : null;
-    Q = { mode: "train", screen: "play", n: 0, right: 0, missed: [], weakOnly: !!only, picker: makePicker(S.tables, 1, only), ansEl: $("tAns"), qEl: $("tQ"), input: "", locked: true };
-    show("play"); say("Escribe el resultado y pulsa OK. ¡Sin prisa!");
+  // mode: "normal" (tablas elegidas) · "weak" (más falladas) · "strategy" (trucos) · "path" (camino de las tablas)
+  function startTraining(mode) {
+    let only = null, tables = S.tables;
+    if (mode === "weak") only = weakest(12);
+    if (mode === "strategy") only = strategyFacts();
+    if (mode === "path") tables = currentStage().tables;
+    Q = { mode: "train", screen: "play", kind: mode, n: 0, right: 0, missed: [], weakOnly: mode === "weak", strategy: mode === "strategy",
+      picker: makePicker(tables, 1, only), ansEl: $("tAns"), qEl: $("tQ"), input: "", locked: true,
+      decorate: mode === "strategy" ? strategyDecorate : null };
+    show("play");
+    say(mode === "strategy" ? "Usa la pista: con una multiplicación fácil puedes sacar la difícil."
+      : mode === "path" ? `Practicamos las tablas del ${tables.join(" y del ")}. ¡Sin prisa!`
+      : "Escribe el resultado y pulsa OK. ¡Sin prisa!");
     nextTrainQ();
   }
   function nextTrainQ() {
     Q.n++;
     if (Q.n > 10) return trainEnd();
+    Q.retype = false;
     $("tCount").textContent = Q.n + " / 10";
-    $("explain").hidden = true; $("tPad").hidden = false;
+    $("explain").hidden = true; $("tPad").hidden = false; $("tHint").hidden = !Q.strategy;
     askQ();
   }
   function trainAnswer(ok, a, b) {
     if (ok) {
       Q.right++; Q.ansEl.className = "ans ok"; sfx.ok(); sayAnswer(a, b, true, false);
-      say(pick(PRAISE) + (lvl(Q.k) === 3 ? " ¡Esa flor ya ha florecido! 🌷" : "") + streakNote());
-      later(nextTrainQ, voiceOn() ? 1000 : 800);
+      say((Q.strategy && Q.strat ? `¡Eso es! ${Q.strat.how}. ` : "") + praiseFor(a, b) + streakNote());
+      later(nextTrainQ, voiceOn() ? 1000 : 900);
     } else {
       if (!Q.missed.includes(Q.k)) Q.missed.push(Q.k);
       Q.picker.fail(Q.k);
@@ -2264,10 +2503,82 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     dots.style.gridTemplateColumns = `repeat(${b}, 14px)`;
     for (let r = 0; r < a; r++) for (let c = 0; c < b; c++) { const i = document.createElement("i"); if (r >= 5) i.className = "five"; dots.appendChild(i); }
     $("dotsCap").textContent = `${a} filas de ${b} bolitas = ${a * b} bolitas`;
-    $("exTip").textContent = trick(a, b) + (a !== b ? ` Y recuerda: ${a} × ${b} es lo mismo que ${b} × ${a}.` : "");
+    $("exTip").textContent = (Q.strategy && Q.strat ? `Con el truco: ${Q.strat.how}. ` : "") + trick(a, b) + (a !== b ? ` Y recuerda: ${a} × ${b} es lo mismo que ${b} × ${a}.` : "");
     $("explain").hidden = false; $("exOk").focus();
   }
-  $("exOk").onclick = () => { sfx.tap(); nextTrainQ(); };
+  // Tras fallar, el niño escribe la respuesta correcta antes de seguir: producirla la fija mejor que solo verla
+  $("exOk").onclick = () => { sfx.tap(); startRetype(); };
+  function startRetype() {
+    const [a, b] = Q.k.split("x").map(Number);
+    Q.retype = true; Q.input = ""; Q.locked = false;
+    $("explain").hidden = true; $("tPad").hidden = false;
+    $("tHint").hidden = false; $("tHint").textContent = "Ahora escríbela tú, sin mirar:";
+    Q.qEl.textContent = `${a} × ${b} = ?`; Q.qEl.classList.remove("story", "long");
+    Q.ansEl.className = "ans"; Q.ansEl.textContent = "";
+    say("Ahora escríbela tú. Escribir la buena después de fallar ayuda muchísimo a recordarla.");
+    if (voiceOn()) speak(`${a} por ${b}`);
+  }
+  function retypeCheck() {
+    const [a, b] = Q.k.split("x").map(Number);
+    Q.locked = true;
+    if (Number(Q.input) === a * b) {
+      Q.retype = false;
+      Q.ansEl.className = "ans ok"; sfx.ok(); sayAnswer(a, b, true, false);
+      say("¡Eso es! Ahora ya la tienes un poco más grabada.");
+      later(nextTrainQ, 900);
+    } else {
+      Q.ansEl.className = "ans bad"; sfx.bad();
+      say(`Casi. ${a} × ${b} = ${a * b}. Escríbelo otra vez.`);
+      Q.input = "";
+      later(() => { Q.locked = false; Q.ansEl.className = "ans"; Q.ansEl.textContent = ""; }, 700);
+    }
+  }
+
+  // Trucos: sacar las difíciles a partir de las fáciles (×5, ×10, el doble, una vez más)
+  function strategyFacts() {
+    const out = [];
+    for (let a = 2; a <= 9; a++) for (const b of [6, 7, 8, 9]) out.push(a + "x" + b);
+    return out;
+  }
+  function strategyFor(a, b) {
+    const f = (x, y) => ({ text: `${x} × ${y} = ${x * y}`, say: `${x} por ${y} son ${x * y}` });
+    const opts = [];
+    if (b === 9) opts.push({ ...f(a, 10), how: `${a * 10} − ${a} = ${a * 9}` });
+    if (b === 6 || b === 7) opts.push({ ...f(a, 5), how: `${a * 5} + ${a * (b - 5)} = ${a * b}` });
+    if (b % 2 === 0) opts.push({ ...f(a, b / 2), how: `el doble: ${a * b / 2} + ${a * b / 2} = ${a * b}` });
+    opts.push({ ...f(a, b - 1), how: `${a * (b - 1)} + ${a} = ${a * b}` });
+    return pick(opts);
+  }
+  function strategyDecorate(a, b) {
+    const st = strategyFor(a, b);
+    Q.strat = st;
+    $("tHint").hidden = false; $("tHint").textContent = `Pista: si ${st.text}…`;
+    Q.qEl.textContent = `¿${a} × ${b}?`;
+    Q.speech = `Si ${st.say}, ¿cuánto es ${a} por ${b}?`;
+  }
+
+  // Camino de las tablas en el orden recomendado; una multiplicación cuenta como sabida si se domina ella o su inversa
+  const STAGES = [
+    { name: "Primeras", tables: [2, 10, 5] }, { name: "Segundas", tables: [3, 4] },
+    { name: "Terceras", tables: [9, 6] }, { name: "Las más difíciles", tables: [7, 8] }
+  ];
+  const knownFact = (a, b) => lvl(a + "x" + b) === 3 || lvl(b + "x" + a) === 3;
+  function stagePct(st) {
+    let k = 0, t = 0;
+    st.tables.forEach(a => { for (let b = 1; b <= 10; b++) { t++; if (knownFact(a, b)) k++; } });
+    return Math.round(100 * k / t);
+  }
+  const currentStage = () => STAGES.find(st => stagePct(st) < 80) || STAGES[STAGES.length - 1];
+  function knownCount() { let n = 0; for (let a = 1; a <= 10; a++) for (let b = 1; b <= 10; b++) if (knownFact(a, b)) n++; return n; }
+  function renderPath() {
+    const cur = currentStage();
+    $("pathBox").innerHTML = `<p class="label">Tu camino de las tablas</p>` + STAGES.map(st => {
+      const pct = stagePct(st), now = st === cur;
+      return `<div class="path-row${now ? " now" : ""}"><span>${st.name}: ${st.tables.join(", ")}${now ? " ← ahora" : pct >= 80 ? " ✓" : ""}</span><span>${pct} %</span><div class="pbar"><i style="width:${pct}%"></i></div></div>`;
+    }).join("") + `<p class="path-note">Ya sabes ${knownCount()} de 100 multiplicaciones. Como 3 × 7 = 7 × 3, cada una que aprendes te regala otra.</p>
+      <button class="big" id="pathGo">Seguir mi camino: tablas del ${cur.tables.join(" y del ")}</button>`;
+    $("pathGo").onclick = () => { sfx.tap(); startTraining("path"); };
+  }
   function trainEnd() {
     const q = Q; Q = null;
     $("endScore").textContent = q.right + " / 10";
@@ -2275,17 +2586,19 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
       : q.right >= 7 ? "¡Muy bien! Tu jardín está creciendo."
       : q.right >= 4 ? "¡Buen trabajo! Cada vez te sale mejor."
       : "¡Has practicado un montón! Mañana saldrá mejor todavía.";
-    const tail = q.weakOnly ? " Cada vez que aciertas una de tus falladas, sale un poco menos." : "";
+    const tail = q.weakOnly ? " Cada vez que aciertas una de tus falladas, sale un poco menos."
+      : q.strategy ? " Con los trucos puedes sacar cualquier difícil a partir de una fácil." : "";
     $("endMsg").textContent = msg + tail; say(msg + tail);
-    lastWeak = q.weakOnly;
+    lastMode = q.kind;
     $("endMissBox").hidden = !q.missed.length;
     fillReview($("endMiss"), q.missed);
     show("end");
   }
-  $("trainStart").onclick = () => { sfx.tap(); startTraining(false); };
-  $("trainWeak").onclick = () => { sfx.tap(); startTraining(true); say("¡Vamos a por las que más te cuestan! Si fallas, te enseño el truco."); };
-  let lastWeak = false;
-  $("again").onclick = () => { sfx.tap(); startTraining(lastWeak && weakest(1).length > 0); };
+  $("trainStart").onclick = () => { sfx.tap(); startTraining("normal"); };
+  $("trainStrategy").onclick = () => { sfx.tap(); startTraining("strategy"); };
+  $("trainWeak").onclick = () => { sfx.tap(); startTraining("weak"); say("¡Vamos a por las que más te cuestan! Si fallas, te enseño el truco."); };
+  let lastMode = "normal";
+  $("again").onclick = () => { sfx.tap(); startTraining(lastMode === "weak" && !weakest(1).length ? "normal" : lastMode); };
   $("playQuit").onclick = () => { sfx.tap(); Q = null; renderTrain(); show("train"); };
 
   /* ---------- Jardín ---------- */
@@ -2302,7 +2615,11 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
         p.className = "plot" + (weak ? " weak" : l ? " l" + l : "");
         p.textContent = weak ? "🥀" : ["", "🌱", "🌿", "🌷"][l];
         p.setAttribute("aria-label", `${a} por ${b}`);
-        p.onclick = () => { $("gcap").textContent = `${a} × ${b} = ${a * b} · ${weak ? "necesita repaso: te cuesta, así que saldrá más a menudo" : ["todavía sin plantar", "brotando", "creciendo", "¡dominada!"][l]}`; };
+        p.onclick = () => {
+          const revKnown = a !== b && l < 3 && lvl(b + "x" + a) === 3;
+          const t = S.rt && S.rt[k] ? ` · tarda ${(S.rt[k] / 1000).toFixed(1).replace(".", ",")} s` : "";
+          $("gcap").textContent = `${a} × ${b} = ${a * b} · ${weak ? "necesita repaso: te cuesta, así que saldrá más a menudo" : ["todavía sin plantar", "brotando", "creciendo (para que florezca, recuérdala rápido)", "¡dominada!"][l]}${t}${revKnown ? ` · ¡Ya dominas ${b} × ${a}, así que esta también la sabes!` : ""}`;
+        };
         g.appendChild(p);
       }
     }
@@ -2367,6 +2684,34 @@ button:focus-visible { outline: 3px solid var(--sea-deep); outline-offset: 3px; 
     say("¡Hola, soy Nutri! Usa las flechas para pasear. Si caminas por la hierba alta, ¡puede salir un animal! Gánale el duelo para llevarlo al museo.");
     S.intro = true; save();
   } else say("¡Hola otra vez! " + pick(NUTRI_TALK));
+})();
+</script>
+<div id="consent" hidden style="position:fixed;left:12px;right:12px;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:50;max-width:560px;margin:0 auto;background:#fffaee;color:#413b2c;border-radius:18px;box-shadow:0 6px 24px rgba(0,0,0,.18);padding:14px 16px;font-family:Nunito,'Segoe UI',system-ui,sans-serif;font-size:15px;font-weight:700;line-height:1.4">
+  <p style="margin:0 0 10px">Para adultos: usamos Google Analytics para contar las visitas y mejorar el juego. Usa cookies. ¿Lo permites?</p>
+  <div style="display:flex;gap:10px;justify-content:flex-end">
+    <button id="consentNo" style="font:inherit;font-weight:800;border:0;border-radius:999px;padding:8px 16px;background:#efe6cc;color:#413b2c;cursor:pointer">No, gracias</button>
+    <button id="consentYes" style="font:inherit;font-weight:800;border:0;border-radius:999px;padding:8px 16px;background:#2c9fb3;color:#fff;cursor:pointer">Aceptar</button>
+  </div>
+</div>
+<script>
+(function () {
+  var KEY = "ga-consent", ID = "G-L3K7HS5017";
+  function get() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function set(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+  function loadGA() {
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function () { dataLayer.push(arguments); };
+    gtag("js", new Date());
+    gtag("config", ID);
+    var s = document.createElement("script");
+    s.async = true; s.src = "https://www.googletagmanager.com/gtag/js?id=" + ID;
+    document.head.appendChild(s);
+  }
+  var c = get(), box = document.getElementById("consent");
+  if (c === "si") loadGA();
+  else if (c !== "no") box.hidden = false;
+  document.getElementById("consentYes").onclick = function () { set("si"); box.hidden = true; loadGA(); };
+  document.getElementById("consentNo").onclick = function () { set("no"); box.hidden = true; };
 })();
 </script>
 </body>
